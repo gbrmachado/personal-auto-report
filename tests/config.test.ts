@@ -1,12 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
-import { writeFileSync, rmSync, existsSync } from 'fs'
+import { writeFileSync, rmSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import os from 'os'
 
 const testDir = join(tmpdir(), 'review-test-' + Date.now())
-const testConfigDir = join(testDir, '.config', 'review')
-const testConfigPath = join(testConfigDir, 'config.json')
 
 describe('config', () => {
   let origHomedir: typeof os.homedir

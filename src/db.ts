@@ -81,3 +81,9 @@ export function insertReview(db: Database.Database, review: Omit<ReviewRow, 'id'
   ).run(review.period, review.date_start, review.date_end, review.raw_markdown, review.ai_summary)
   return result.lastInsertRowid as number
 }
+
+export function getReviewsInRange(db: Database.Database, period: string, dateStart: string, dateEnd: string): ReviewRow[] {
+  return db.prepare(
+    'SELECT * FROM reviews WHERE period = ? AND date_start >= ? AND date_end <= ? ORDER BY created_at DESC'
+  ).all(period, dateStart, dateEnd) as ReviewRow[]
+}
