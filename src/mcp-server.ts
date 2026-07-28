@@ -15,8 +15,8 @@ export async function executeReviewTool(
 ) {
   try {
     const ai = typeof args?.ai === 'boolean' ? args.ai : false
-    const fromDate = typeof args?.from === 'string' ? args.from : undefined
-    const toDate = typeof args?.to === 'string' ? args.to : undefined
+    const fromDate = typeof args?.from === 'string' && /^\d{4}-\d{2}-\d{2}/.test(args.from) ? args.from : undefined
+    const toDate = typeof args?.to === 'string' && /^\d{4}-\d{2}-\d{2}/.test(args.to) ? args.to : undefined
     const period = name === 'daily_review'
       ? 'daily'
       : name === 'weekly_review'

@@ -28,9 +28,7 @@ export function getDateRange(period: string, fromDate?: string, toDate?: string)
     if (period === 'daily') {
       start.setHours(0, 0, 0, 0)
     } else if (period === 'weekly') {
-      const day = start.getDay()
-      const diff = start.getDate() - day + (day === 0 ? -6 : 1)
-      start.setDate(diff)
+      start.setDate(start.getDate() - ((start.getDay() + 6) % 7))
       start.setHours(0, 0, 0, 0)
     } else if (period === 'monthly') {
       start.setDate(1)
