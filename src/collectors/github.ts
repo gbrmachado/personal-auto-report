@@ -23,7 +23,7 @@ export class GitHubCollector implements Collector {
         url: pr.html_url,
         status: pr.state,
         timestamp: new Date(pr.updated_at),
-        description: pr.body,
+        description: pr.body ?? null,
         metadata: { repo: pr.repository_url?.split('/').slice(-2).join('/') ?? null }
       })
     }
@@ -40,7 +40,7 @@ export class GitHubCollector implements Collector {
         url: pr.html_url,
         status: pr.state,
         timestamp: new Date(pr.updated_at),
-        description: pr.body,
+        description: pr.body ?? null,
         metadata: { repo: pr.repository_url?.split('/').slice(-2).join('/') ?? null }
       })
     }
