@@ -6,6 +6,36 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { generateReview } from './review.js'
 
+type ReviewGenerator = (period: string, useAi: boolean) => Promise<string>
+
+export async function executeReviewTool(
+  name: string,
+  args: Record<string, unknown> | undefined,
+  reviewGenerator: ReviewGenerator = generateReview
+) {
+  try {
+    const ai = typeof args?.ai === 'boolean' ? args.ai : false
+    const period = name === 'daily_review'
+      ? 'daily'
+      : name === 'weekly_review'
+        ? 'weekly'
+        : name === 'monthly_review'
+          ? 'monthly'
+          : null
+
+    if (!period) throw new Error(`Unknown tool: ${name}`)
+
+    const markdown = await reviewGenerator(period, ai)
+    return { content: [{ type: 'text' as const, text: markdown }] }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      content: [{ type: 'text' as const, text: `Error: ${message}` }],
+      isError: true
+    }
+  }
+}
+
 export async function startMcpServer(): Promise<void> {
   const server = new Server(
     {
@@ -54,35 +84,9 @@ export async function startMcpServer(): Promise<void> {
     ]
   }))
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    try {
-      const ai = typeof request.params.arguments?.ai === 'boolean' ? request.params.arguments.ai : false
-      let markdown: string
-
-      switch (request.params.name) {
-        case 'daily_review':
-          markdown = await generateReview('daily', ai)
-          break
-        case 'weekly_review':
-          markdown = await generateReview('weekly', ai)
-          break
-        case 'monthly_review':
-          markdown = await generateReview('monthly', ai)
-          break
-        default:
-          throw new Error(`Unknown tool: ${request.params.name}`)
-      }
-
-      return {
-        content: [{ type: 'text', text: markdown }]
-      }
-    } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error: ${err.message}` }],
-        isError: true
-      }
-    }
-  })
+  server.setRequestHandler(CallToolRequestSchema, request =>
+    executeReviewTool(request.params.name, request.params.arguments)
+  )
 
   const transport = new StdioServerTransport()
   await server.connect(transport)

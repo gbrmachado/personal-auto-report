@@ -2,6 +2,7 @@
 import { Command } from 'commander'
 import { initConfig } from './config.js'
 import { generateReview } from './review.js'
+import { runCli } from './cli.js'
 
 const program = new Command()
 program
@@ -52,7 +53,4 @@ program
     await startMcpServer()
   })
 
-program.parseAsync().catch(err => {
-  console.error('Error:', err.message)
-  process.exit(1)
-})
+void runCli(program)

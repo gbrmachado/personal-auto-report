@@ -12,7 +12,7 @@ const { mockSearch } = vi.hoisted(() => ({
 
 vi.mock('octokit', () => ({
   Octokit: vi.fn().mockImplementation(() => ({
-    search: { issuesAndPullRequests: mockSearch }
+    rest: { search: { issuesAndPullRequests: mockSearch } }
   }))
 }))
 

@@ -15,19 +15,22 @@ export class LinearCollector implements Collector {
         updatedAt: { gte: range.start.toISOString() }
       }
     })
-    return issues.nodes.map(issue => ({
-      id: `linear-${issue.id}`,
-      source: 'linear' as const,
-      type: 'task' as const,
-      title: issue.title,
-      url: issue.url,
-      status: issue.state?.name ?? null,
-      timestamp: new Date(issue.updatedAt),
-      description: issue.description ?? null,
-      metadata: {
-        priority: issue.priority,
-        team: issue.team?.name ?? null,
-        identifier: issue.identifier
+    return Promise.all(issues.nodes.map(async issue => {
+      const [state, team] = await Promise.all([issue.state, issue.team])
+      return {
+        id: `linear-${issue.id}`,
+        source: 'linear' as const,
+        type: 'task' as const,
+        title: issue.title,
+        url: issue.url,
+        status: state?.name ?? null,
+        timestamp: new Date(issue.updatedAt),
+        description: issue.description ?? null,
+        metadata: {
+          priority: issue.priority,
+          team: team?.name ?? null,
+          identifier: issue.identifier
+        }
       }
     }))
   }

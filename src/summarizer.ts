@@ -28,7 +28,7 @@ export async function generateSummary(items: CollectedItem[], config: Config, pe
     throw new Error(`Unsupported AI provider: ${config.ai.provider}. Supported: openai, deepseek`)
   }
 
-  const baseURL = config.ai.baseUrl || undefined
+  const baseURL = config.ai.baseUrl || (config.ai.provider === 'deepseek' ? 'https://api.deepseek.com' : undefined)
   const openai = new OpenAI({ apiKey: config.ai.apiKey, baseURL })
   const prompt = buildPrompt(items, period)
 

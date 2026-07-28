@@ -2,6 +2,14 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import os from 'os'
 
+export type AiProvider = 'openai' | 'deepseek'
+
+export function parseAiProvider(input: string): AiProvider {
+  const provider = input.trim().toLowerCase() || 'openai'
+  if (provider === 'openai' || provider === 'deepseek') return provider
+  throw new Error(`Unsupported AI provider: ${input}`)
+}
+
 export interface Config {
   linear: { apiKey: string }
   github: { token: string }
@@ -12,7 +20,7 @@ export interface Config {
     slack: string
   }
   ai: {
-    provider: 'openai' | 'deepseek'
+    provider: AiProvider
     apiKey: string
     model: string
     baseUrl?: string
@@ -51,6 +59,9 @@ export async function initConfig(): Promise<void> {
 
   console.log('ai-professional-review Configuration\n')
 
+  const provider = parseAiProvider(await q('AI provider (openai/deepseek)'))
+  const defaultModel = provider === 'deepseek' ? 'deepseek-chat' : 'gpt-4o-mini'
+
   const config: Config = {
     linear: { apiKey: await q('Linear API Key') },
     github: { token: await q('GitHub Personal Access Token') },
@@ -61,9 +72,9 @@ export async function initConfig(): Promise<void> {
       slack: await q('Your Slack member ID')
     },
     ai: {
-      provider: (await q('AI provider (openai/deepseek)')) || 'openai',
+      provider,
       apiKey: await q('AI API Key'),
-      model: await q('AI model (default: gpt-4o-mini)') || 'gpt-4o-mini',
+      model: await q(`AI model (default: ${defaultModel})`) || defaultModel,
       baseUrl: await q('API base URL (optional, for deepseek use https://api.deepseek.com)') || undefined
     },
     db: {

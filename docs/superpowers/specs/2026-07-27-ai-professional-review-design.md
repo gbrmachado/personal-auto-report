@@ -173,7 +173,8 @@ Stored at `~/.config/review/config.json`:
   "ai": {
     "provider": "openai",
     "apiKey": "sk-...",
-    "model": "gpt-4o-mini"
+    "model": "gpt-4o-mini",
+    "baseUrl": "optional OpenAI-compatible API URL"
   },
   "db": {
     "path": "~/.config/review/review.db"
@@ -190,7 +191,7 @@ Stored at `~/.config/review/config.json`:
   - `@linear/sdk` — Linear API
   - `octokit` — GitHub API
   - `@slack/web-api` — Slack API
-  - `openai` or `@anthropic-ai/sdk` — AI summaries
+  - `openai` — OpenAI and OpenAI-compatible providers such as DeepSeek
   - `commander` — CLI framework
   - `better-sqlite3` or `bun:sqlite` — database
 

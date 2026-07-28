@@ -1,4 +1,6 @@
 import type { CollectedItem, DateRange } from './types.js'
+import type { Collector } from './collector.js'
+import type { Config } from './config.js'
 import { loadConfig, getConfigDir } from './config.js'
 import { getDb, insertCollections, insertReview } from './db.js'
 import { LinearCollector } from './collectors/linear.js'
@@ -38,6 +40,28 @@ export function formatDateLabel(range: DateRange, period: string): string {
   return range.start.toLocaleString('default', { month: 'long', year: 'numeric' })
 }
 
+export async function collectFresh(
+  collectors: Collector[],
+  range: DateRange,
+  config: Config
+): Promise<{ items: CollectedItem[]; warnings: string[] }> {
+  const results = await Promise.allSettled(collectors.map(collector => collector.collect(range, config)))
+  const warnings: string[] = []
+  const items: CollectedItem[] = []
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      items.push(...result.value)
+      return
+    }
+
+    const message = result.reason instanceof Error ? result.reason.message : String(result.reason)
+    warnings.push(`${collectors[index].name} collector failed: ${message}`)
+  })
+
+  return { items: aggregate(items), warnings }
+}
+
 export async function generateReview(period: string, useAi: boolean): Promise<string> {
   const config = loadConfig()
   const range = getDateRange(period)
@@ -55,17 +79,7 @@ export async function generateReview(period: string, useAi: boolean): Promise<st
     new SlackCollector()
   ]
 
-  const warnings: string[] = []
-  const results = await Promise.allSettled(
-    collectors.map(c => c.collect(range, config).catch((err: Error) => {
-      const msg = `${c.name} collector failed: ${err.message}`
-      console.error(msg)
-      warnings.push(msg)
-      return [] as CollectedItem[]
-    }))
-  )
-
-  const items = aggregate(results.flatMap(r => r.status === 'fulfilled' ? r.value : []))
+  const { items, warnings } = await collectFresh(collectors, range, config)
 
   // Store in DB for historical queries
   const rows = items.map(item => ({

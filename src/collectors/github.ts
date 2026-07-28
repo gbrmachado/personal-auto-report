@@ -11,7 +11,7 @@ export class GitHubCollector implements Collector {
     const username = config.user.github
     const items: CollectedItem[] = []
 
-    const created = await octokit.search.issuesAndPullRequests({
+    const created = await octokit.rest.search.issuesAndPullRequests({
       q: `author:${username} type:pr updated:>=${range.start.toISOString().split('T')[0]}`
     })
     for (const pr of created.data.items) {
@@ -28,7 +28,7 @@ export class GitHubCollector implements Collector {
       })
     }
 
-    const reviewed = await octokit.search.issuesAndPullRequests({
+    const reviewed = await octokit.rest.search.issuesAndPullRequests({
       q: `reviewed-by:${username} type:pr updated:>=${range.start.toISOString().split('T')[0]}`
     })
     for (const pr of reviewed.data.items) {

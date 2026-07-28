@@ -2,21 +2,22 @@ import { describe, it, expect, vi } from 'vitest'
 import { buildPrompt, generateSummary } from '../src/summarizer.js'
 import type { CollectedItem } from '../src/types.js'
 
-const { mockCreate } = vi.hoisted(() => ({
+const { mockCreate, mockOpenAI } = vi.hoisted(() => ({
   mockCreate: vi.fn().mockResolvedValue({
     choices: [{ message: { content: 'Mock summary content' } }]
-  })
+  }),
+  mockOpenAI: vi.fn()
 }))
 
 vi.mock('openai', () => {
-  const MockOpenAI = vi.fn(() => ({
+  mockOpenAI.mockImplementation(() => ({
     chat: {
       completions: {
         create: mockCreate
       }
     }
   }))
-  return { default: MockOpenAI }
+  return { default: mockOpenAI }
 })
 
 describe('summarizer', () => {
@@ -47,8 +48,12 @@ describe('summarizer', () => {
     const items: CollectedItem[] = [
       { id: '1', source: 'linear', type: 'task', title: 'Test deepseek', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }
     ]
-    const config = { ai: { apiKey: 'ds-key', provider: 'deepseek', model: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' } }
+    const config = { ai: { apiKey: 'ds-key', provider: 'deepseek', model: 'deepseek-chat' } }
     const result = await generateSummary(items, config as any, 'daily')
+    expect(mockOpenAI).toHaveBeenCalledWith({
+      apiKey: 'ds-key',
+      baseURL: 'https://api.deepseek.com'
+    })
     expect(mockCreate).toHaveBeenCalled()
     expect(result).toBe('Mock summary content')
   })

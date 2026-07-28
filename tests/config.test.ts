@@ -43,4 +43,12 @@ describe('config', () => {
     expect(loaded.github.token).toBe('gh-token')
     expect(loaded.ai.provider).toBe('openai')
   })
+
+  it('parses supported AI providers and rejects invalid input', async () => {
+    const { parseAiProvider } = await import('../src/config.js')
+
+    expect(parseAiProvider('')).toBe('openai')
+    expect(parseAiProvider('DEEPSEEK')).toBe('deepseek')
+    expect(() => parseAiProvider('anthropic')).toThrow('Unsupported AI provider')
+  })
 })
