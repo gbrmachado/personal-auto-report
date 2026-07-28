@@ -44,5 +44,31 @@ export function saveConfig(config: Config): void {
 }
 
 export async function initConfig(): Promise<void> {
-  throw new Error('initConfig not yet implemented')
+  const { createInterface } = await import('readline/promises')
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  const q = (query: string) => rl.question(query + ': ')
+
+  console.log('ai-professional-review Configuration\n')
+
+  const config: Config = {
+    linear: { apiKey: await q('Linear API Key') },
+    github: { token: await q('GitHub Personal Access Token') },
+    slack: { token: await q('Slack User Token (xoxp-...)') },
+    user: {
+      linear: await q('Your Linear email'),
+      github: await q('Your GitHub username'),
+      slack: await q('Your Slack member ID')
+    },
+    ai: {
+      provider: (await q('AI provider (openai/anthropic)')) as 'openai' | 'anthropic' || 'openai',
+      apiKey: await q('AI API Key'),
+      model: await q('AI model (default: gpt-4o-mini)') || 'gpt-4o-mini'
+    },
+    db: {
+      path: join(getConfigDir(), 'review.db')
+    }
+  }
+
+  saveConfig(config)
+  rl.close()
 }
