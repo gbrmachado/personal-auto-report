@@ -54,6 +54,23 @@ src/mcp-server.ts    MCP server (stdio transport), executeReviewTool
 - Each collector runs independently — one failure doesn't block others
 - TDD: write test first, watch it fail, implement, verify pass
 
+## Required Workflow (for AI agents)
+
+Before any task, check if a Superpowers skill applies. If it does,
+invoke it first — do not skip, rationalize, or "check files first."
+
+| Task type | Skill to invoke |
+|-----------|----------------|
+| New feature, component, or behavior change | `brainstorming` → `writing-plans` → implementation |
+| Bug fix, test failure, unexpected behavior | `systematic-debugging` (root cause before any fix) |
+| Any code change | `test-driven-development` (RED → GREEN → REFACTOR) |
+| Before claiming completion | `verification-before-completion` (evidence before claims) |
+| Merging or integrating work | `finishing-a-development-branch` |
+| Reviewing work output | `requesting-code-review` |
+
+If about to write code, edit a file, or propose a change without having
+invoked the matching skill — stop and invoke it.
+
 ## AI Providers
 
 Supported: `openai`, `deepseek`. DeepSeek defaults to `deepseek-chat` model
