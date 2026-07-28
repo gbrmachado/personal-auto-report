@@ -24,6 +24,10 @@ ${sections}`
 export async function generateSummary(items: CollectedItem[], config: Config, period: string): Promise<string> {
   if (items.length === 0) return 'No activity to summarize.'
 
+  if (config.ai.provider !== 'openai') {
+    throw new Error(`Unsupported AI provider: ${config.ai.provider}. Only 'openai' is supported.`)
+  }
+
   const openai = new OpenAI({ apiKey: config.ai.apiKey })
   const prompt = buildPrompt(items, period)
 

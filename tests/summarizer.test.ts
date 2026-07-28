@@ -35,6 +35,14 @@ describe('summarizer', () => {
     expect(result).toBe('No activity to summarize.')
   })
 
+  it('throws for unsupported AI provider', async () => {
+    const items: CollectedItem[] = [
+      { id: '1', source: 'linear', type: 'task', title: 'Fix login bug', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }
+    ]
+    const config = { ai: { apiKey: 'test', provider: 'anthropic', model: 'claude-3' } }
+    await expect(generateSummary(items, config as any, 'daily')).rejects.toThrow('Unsupported AI provider')
+  })
+
   it('calls OpenAI and returns generated summary', async () => {
     const items: CollectedItem[] = [
       { id: '1', source: 'linear', type: 'task', title: 'Fix login bug', url: null, status: 'Done', timestamp: new Date(), description: 'Users could not log in with SSO', metadata: null }
