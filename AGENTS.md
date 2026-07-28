@@ -10,69 +10,62 @@ summaries. Outputs markdown, stores history in SQLite.
 
 ```bash
 npm test              # vitest run
-npm run build          # tsup --platform node
-npm run typecheck      # tsc --noEmit
-npm run dev            # tsup --watch
+npm run build         # tsup src/index.ts --format esm --clean --platform node
+npm run typecheck     # tsc --noEmit
+npm run dev           # tsup src/index.ts --format esm --watch --platform node
 
 # After build:
-node dist/index.js init          # interactive config setup
-node dist/index.js daily --ai    # today's review with AI summary
-node dist/index.js weekly --ai   # this week's review
-node dist/index.js monthly --ai  # this month's review
-node dist/index.js serve         # MCP server (stdio)
+node dist/index.js init            # interactive config setup
+node dist/index.js daily [--ai]    # today, optional AI summary
+node dist/index.js weekly [--ai]   # this week
+node dist/index.js monthly [--ai]  # this month
+node dist/index.js priorities [--ai] # stale tasks + PRs needing attention
+node dist/index.js serve           # MCP server (stdio)
 ```
+
+`daily --from YYYY-MM-DD --to YYYY-MM-DD` also accepts ISO datetimes. Range capped at 7 days.
 
 ## Architecture
 
 ```
-src/index.ts         CLI entry — delegates to runCli
+src/index.ts         CLI entry (commander) — delegates to runCli
 src/cli.ts           Async CLI runner (parseAsync + error reporting)
-src/config.ts        Config loading/saving, initConfig, parseAiProvider
-src/db.ts            SQLite schema + CRUD (better-sqlite3)
+src/config.ts        Config load/save, initConfig, parseAiProvider
+src/db.ts            SQLite schema + CRUD (better-sqlite3, WAL pragma)
 src/types.ts         CollectedItem, DateRange
-src/collector.ts     Collector interface (Config-typed)
+src/collector.ts     Collector interface (name + collect method)
 src/collectors/
-  linear.ts          Linear SDK → tasks
-  github.ts          Octokit → PRs created/reviewed
+  linear.ts          @linear/sdk → tasks assigned to user
+  github.ts          octokit → PRs created/reviewed
   slack.ts           @slack/web-api → @mentions
-src/aggregator.ts    Merge + sort items
-src/summarizer.ts    OpenAI/DeepSeek LLM summary
-src/renderer.ts      Markdown output
+src/aggregator.ts    Merge + sort by timestamp; groupBySource, groupByType
+src/summarizer.ts    OpenAI/DeepSeek LLM summary via OpenAI SDK
+src/renderer.ts      Markdown output (sections: AI Summary, Linear Tasks, PRs, Slack, Warnings)
+src/priority.ts      PriorityEngine — Linear tasks by status, stale PRs, pending reviews
 src/review.ts        Orchestration: collectFresh → aggregate → summarize → render
-src/mcp-server.ts    MCP server (stdio transport), executeReviewTool
+src/mcp-server.ts    MCP stdio server, 4 tools (daily/weekly/monthly review + priorities)
 ```
+
+## Testing
+
+- Vitest for all tests. External APIs **never** hit real services — always mock.
+- Pattern: `vi.mock` SDK at module level, then `await import()` inside test for late binding.
+- `vi.hoisted()` for shared mock values across vi.mock callbacks.
+- One test file per source file under `tests/` mirroring `src/` structure.
+
+## Config & Data
+
+- Config: `~/.config/review/config.json` (mode 0600)
+- DB: `~/.config/review/review.db` (auto-created with WAL journaling)
+- [AI providers](https://github.com/anomalyco/opencode/issues): `openai` (gpt-4o-mini) and `deepseek` (deepseek-chat).
+  Custom `baseUrl` supports any OpenAI-compatible API.
+- Priorities config controls which Linear statuses and GitHub PR age thresholds appear.
 
 ## Conventions
 
-- Node 20+, ESM modules, TypeScript strict mode
-- Config at `~/.config/review/config.json` (0600)
-- DB at `~/.config/review/review.db`
-- Vitest for testing — mock all external APIs (never hit real services)
-- tsup for bundling — use `--platform node` for Node built-ins
-- `.nvmrc` for Node version (works with nvm, fnm, mise)
+- ESM (`"type": "module"`), TypeScript strict mode, Node 20+ (`.nvmrc`)
+- `tsup` bundling with `--platform node` for Node built-ins
+- Each collector runs independently (`Promise.allSettled` in `collectFresh`)
 - Collectors implement `Collector` interface from `src/collector.ts`
-- Each collector runs independently — one failure doesn't block others
-- TDD: write test first, watch it fail, implement, verify pass
-
-## Required Workflow (for AI agents)
-
-Before any task, check if a Superpowers skill applies. If it does,
-invoke it first — do not skip, rationalize, or "check files first."
-
-| Task type | Skill to invoke |
-|-----------|----------------|
-| New feature, component, or behavior change | `brainstorming` → `writing-plans` → implementation |
-| Bug fix, test failure, unexpected behavior | `systematic-debugging` (root cause before any fix) |
-| Any code change | `test-driven-development` (RED → GREEN → REFACTOR) |
-| Before claiming completion | `verification-before-completion` (evidence before claims) |
-| Merging or integrating work | `finishing-a-development-branch` |
-| Reviewing work output | `requesting-code-review` |
-
-If about to write code, edit a file, or propose a change without having
-invoked the matching skill — stop and invoke it.
-
-## AI Providers
-
-Supported: `openai`, `deepseek`. DeepSeek defaults to `deepseek-chat` model
-and `https://api.deepseek.com` base URL. Both use the OpenAI SDK.
-Custom `baseUrl` in config supports any OpenAI-compatible API.
+- Tests default: vitest config in `package.json` scripts (no `vitest.config.ts`)
+- Capped 7-day range for all custom date queries
