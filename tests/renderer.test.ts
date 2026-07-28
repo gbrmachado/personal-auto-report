@@ -22,4 +22,14 @@ describe('renderer', () => {
     const md = renderReview([], 'weekly', 'Jul 21 - Jul 27')
     expect(md).toContain('# Weekly Review — Jul 21 - Jul 27')
   })
+
+  it('renders warnings section when warnings are provided', () => {
+    const md = renderReview([], 'daily', '2026-07-27', undefined, [
+      'Linear collector failed: API timeout',
+      'Slack collector failed: Invalid token'
+    ])
+    expect(md).toContain('## Warnings')
+    expect(md).toContain('- Linear collector failed: API timeout')
+    expect(md).toContain('- Slack collector failed: Invalid token')
+  })
 })

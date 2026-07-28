@@ -1,5 +1,4 @@
 import type { CollectedItem, DateRange } from './types.js'
-import type { Config } from './config.js'
 import { loadConfig, getConfigDir } from './config.js'
 import { getDb, insertCollections, insertReview, getCollectionsInRange } from './db.js'
 import { LinearCollector } from './collectors/linear.js'
@@ -60,6 +59,8 @@ export async function generateReview(period: string, useAi: boolean): Promise<st
     metadata: r.metadata ? JSON.parse(r.metadata) : null
   }))
 
+  const warnings: string[] = []
+
   if (items.length === 0) {
     const collectors = [
       new LinearCollector(),
@@ -69,7 +70,9 @@ export async function generateReview(period: string, useAi: boolean): Promise<st
 
     const results = await Promise.allSettled(
       collectors.map(c => c.collect(range, config).catch((err: Error) => {
-        console.error(`Warning: ${c.name} collector failed: ${err.message}`)
+        const msg = `${c.name} collector failed: ${err.message}`
+        console.error(msg)
+        warnings.push(msg)
         return [] as CollectedItem[]
       }))
     )
@@ -96,7 +99,7 @@ export async function generateReview(period: string, useAi: boolean): Promise<st
     aiSummary = await generateSummary(items, config, period)
   }
 
-  const markdown = renderReview(items, period, dateLabel, aiSummary)
+  const markdown = renderReview(items, period, dateLabel, aiSummary, warnings)
 
   insertReview(db, {
     period,

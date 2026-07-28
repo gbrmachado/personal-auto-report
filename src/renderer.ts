@@ -5,7 +5,8 @@ export function renderReview(
   items: CollectedItem[],
   period: string,
   dateLabel: string,
-  aiSummary?: string
+  aiSummary?: string,
+  warnings?: string[]
 ): string {
   const lines: string[] = []
   const heading = period === 'daily' ? 'Daily' : period === 'weekly' ? 'Weekly' : 'Monthly'
@@ -65,6 +66,12 @@ export function renderReview(
         lines.push(`- [#${channel}] ${item.title}`)
       }
     }
+    lines.push('')
+  }
+
+  if (warnings?.length) {
+    lines.push('## Warnings')
+    for (const w of warnings) lines.push(`- ${w}`)
     lines.push('')
   }
 
