@@ -1,11 +1,12 @@
 import { LinearClient } from '@linear/sdk'
 import type { Collector } from '../collector.js'
 import type { CollectedItem, DateRange } from '../types.js'
+import type { Config } from '../config.js'
 
 export class LinearCollector implements Collector {
   readonly name = 'linear'
 
-  async collect(range: DateRange, config: { linear: { apiKey: string }; user: { linear: string } }): Promise<CollectedItem[]> {
+  async collect(range: DateRange, config: Config): Promise<CollectedItem[]> {
     const client = new LinearClient({ apiKey: config.linear.apiKey })
     const me = await client.viewer
     const issues = await client.issues({
@@ -22,7 +23,7 @@ export class LinearCollector implements Collector {
       url: issue.url,
       status: issue.state?.name ?? null,
       timestamp: new Date(issue.updatedAt),
-      description: issue.description,
+      description: issue.description ?? null,
       metadata: {
         priority: issue.priority,
         team: issue.team?.name ?? null,
