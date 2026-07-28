@@ -92,11 +92,32 @@ node dist/index.js monthly [--ai]
 node dist/index.js daily --from 2026-07-27 --to 2026-07-27 --ai
 node dist/index.js daily --from "2026-07-27T14:00:00" --ai
 
+# Priorities — what needs attention
+node dist/index.js priorities [--ai]
+
 # Setup
 node dist/index.js init
 
 # MCP server (stdio)
 node dist/index.js serve
+```
+
+## Priorities Output
+
+```markdown
+# Priorities
+
+## Linear Tasks
+| Title | Status | Updated | Link |
+|-------|--------|---------|------|
+
+## Stale PRs (Created)
+| Title | Age | Status | Link |
+|-------|-----|--------|------|
+
+## PRs Awaiting Your Review
+| Title | Age | Author | Link |
+|-------|-----|--------|------|
 ```
 
 ## MCP Server
@@ -106,6 +127,7 @@ node dist/index.js serve
 - `daily_review(ai?, from?, to?)`
 - `weekly_review(ai?, from?, to?)`
 - `monthly_review(ai?, from?, to?)`
+- `review_priorities(ai?)`
 
 Configure in OpenCode or any MCP client:
 
@@ -162,6 +184,7 @@ src/
   summarizer.ts    AI narrative (OpenAI/DeepSeek)
   renderer.ts      Markdown output
   review.ts        Orchestration pipeline
+  priority.ts      PriorityEngine (task triage + stale PRs)
   mcp-server.ts    MCP stdio server
 ```
 
