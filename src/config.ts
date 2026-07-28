@@ -44,7 +44,7 @@ export function saveConfig(config: Config): void {
 }
 
 export async function initConfig(): Promise<void> {
-  const { createInterface } = await import('readline/promises')
+  const { createInterface } = await import('node:readline/promises')
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   const q = (query: string) => rl.question(query + ': ')
 
