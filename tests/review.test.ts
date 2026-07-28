@@ -42,6 +42,23 @@ describe('date range helpers', () => {
     expect(range.start.getHours()).toBe(14)
     expect(range.end.getHours()).toBe(16)
   })
+
+  it('caps range to 7 days', async () => {
+    const { getDateRange } = await import('../src/review.js')
+    const range = getDateRange('daily', '2026-07-01', '2026-07-28')
+    expect(range.start.getFullYear()).toBe(2026)
+    expect(range.start.getMonth()).toBe(6)
+    expect(range.start.getDate()).toBe(21) // 7 days before end
+    expect(range.end.getDate()).toBe(28)
+  })
+
+  it('defaults to now when no toDate is given', async () => {
+    const { getDateRange } = await import('../src/review.js')
+    const range = getDateRange('daily', '2026-07-27')
+    const now = new Date()
+    expect(range.end.getDate()).toBe(now.getDate())
+    expect(range.end.getFullYear()).toBe(now.getFullYear())
+  })
 })
 
 describe('fresh collection', () => {

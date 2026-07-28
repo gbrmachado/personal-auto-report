@@ -18,24 +18,29 @@ export function parseDateInput(input: string, defaultTime: 'start' | 'end'): Dat
 }
 
 export function getDateRange(period: string, fromDate?: string, toDate?: string): DateRange {
-  const start = fromDate ? parseDateInput(fromDate, 'start') : new Date()
-  const now = toDate ? parseDateInput(toDate, 'end') : (fromDate ? parseDateInput(fromDate, 'end') : new Date())
+  const now = toDate ? parseDateInput(toDate, 'end') : new Date()
 
-  if (!fromDate) {
-    const startCopy = new Date(now)
+  let start: Date
+  if (fromDate) {
+    start = parseDateInput(fromDate, 'start')
+  } else {
+    start = new Date(now)
     if (period === 'daily') {
-      startCopy.setHours(0, 0, 0, 0)
+      start.setHours(0, 0, 0, 0)
     } else if (period === 'weekly') {
-      const day = startCopy.getDay()
-      const diff = startCopy.getDate() - day + (day === 0 ? -6 : 1)
-      startCopy.setDate(diff)
-      startCopy.setHours(0, 0, 0, 0)
+      const day = start.getDay()
+      const diff = start.getDate() - day + (day === 0 ? -6 : 1)
+      start.setDate(diff)
+      start.setHours(0, 0, 0, 0)
     } else if (period === 'monthly') {
-      startCopy.setDate(1)
-      startCopy.setHours(0, 0, 0, 0)
+      start.setDate(1)
+      start.setHours(0, 0, 0, 0)
     }
-    return { start: startCopy, end: now }
   }
+
+  const sevenDaysAgo = new Date(now)
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  if (start < sevenDaysAgo) start = sevenDaysAgo
 
   return { start, end: now }
 }
