@@ -31,6 +31,17 @@ describe('date range helpers', () => {
     expect(range.end.getDate()).toBe(27)
     expect(range.end.getHours()).toBe(23)
   })
+
+  it('accepts datetime strings for custom range', async () => {
+    const { getDateRange, parseDateInput } = await import('../src/review.js')
+    const parsed = parseDateInput('2026-07-27T14:30:00', 'start')
+    expect(parsed.getHours()).toBe(14)
+    expect(parsed.getMinutes()).toBe(30)
+
+    const range = getDateRange('daily', '2026-07-27T14:00:00', '2026-07-27T16:00:00')
+    expect(range.start.getHours()).toBe(14)
+    expect(range.end.getHours()).toBe(16)
+  })
 })
 
 describe('fresh collection', () => {

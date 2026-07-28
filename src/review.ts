@@ -11,9 +11,15 @@ import { generateSummary } from './summarizer.js'
 import { renderReview } from './renderer.js'
 import { join } from 'path'
 
+export function parseDateInput(input: string, defaultTime: 'start' | 'end'): Date {
+  if (input.includes('T')) return new Date(input)
+  const date = new Date(input + (defaultTime === 'start' ? 'T00:00:00' : 'T23:59:59'))
+  return date
+}
+
 export function getDateRange(period: string, fromDate?: string, toDate?: string): DateRange {
-  const start = fromDate ? new Date(fromDate + 'T00:00:00') : new Date()
-  const now = toDate ? new Date(toDate + 'T23:59:59') : (fromDate ? new Date(fromDate + 'T23:59:59') : new Date())
+  const start = fromDate ? parseDateInput(fromDate, 'start') : new Date()
+  const now = toDate ? parseDateInput(toDate, 'end') : (fromDate ? parseDateInput(fromDate, 'end') : new Date())
 
   if (!fromDate) {
     const startCopy = new Date(now)
