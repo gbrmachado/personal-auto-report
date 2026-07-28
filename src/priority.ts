@@ -75,3 +75,48 @@ export class PriorityEngine {
       }))
   }
 }
+
+export function renderPriorities(result: PriorityResult): string {
+  const lines: string[] = ['# Priorities', '']
+
+  if (result.linear.length) {
+    lines.push('## Linear Tasks')
+    lines.push('| Title | Status | Updated | Link |')
+    lines.push('|-------|--------|---------|------|')
+    for (const item of result.linear) {
+      const days = Math.round((Date.now() - item.timestamp.getTime()) / 86400000)
+      lines.push(`| ${item.title} | ${item.status} | ${days}d ago | ${item.url ?? '-'} |`)
+    }
+    lines.push('')
+  }
+
+  if (result.staleCreated.length) {
+    lines.push('## Stale PRs (Created)')
+    lines.push('| Title | Age | Updated | Link |')
+    lines.push('|-------|-----|---------|------|')
+    for (const item of result.staleCreated) {
+      const age = Math.round((Date.now() - item.timestamp.getTime()) / 86400000)
+      lines.push(`| ${item.title} | ${age}d | ${item.status} | ${item.url ?? '-'} |`)
+    }
+    lines.push('')
+  }
+
+  if (result.pendingReview.length) {
+    lines.push('## PRs Awaiting Your Review')
+    lines.push('| Title | Age | Author | Link |')
+    lines.push('|-------|-----|--------|------|')
+    for (const item of result.pendingReview) {
+      const age = Math.round((Date.now() - item.timestamp.getTime()) / 86400000)
+      const author = (item.metadata?.author as string) ?? '-'
+      lines.push(`| ${item.title} | ${age}d | ${author} | ${item.url ?? '-'} |`)
+    }
+    lines.push('')
+  }
+
+  if (!result.linear.length && !result.staleCreated.length && !result.pendingReview.length) {
+    lines.push('Nothing to do. You\'re all caught up!')
+    lines.push('')
+  }
+
+  return lines.join('\n')
+}

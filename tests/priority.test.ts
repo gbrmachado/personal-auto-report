@@ -22,7 +22,7 @@ vi.mock('octokit', () => ({
   Octokit: vi.fn(() => ({ request: mockRequest }))
 }))
 
-import { PriorityEngine } from '../src/priority.js'
+import { PriorityEngine, renderPriorities, PriorityResult } from '../src/priority.js'
 
 describe('getPrioritiesConfig', () => {
   it('uses defaults when no priorities section exists', async () => {
@@ -59,5 +59,25 @@ describe('PriorityEngine', () => {
     } as any)
     expect(result.linear).toHaveLength(1)
     expect(result.linear[0].title).toBe('Fix bug')
+  })
+})
+
+describe('renderPriorities', () => {
+  it('shows all caught up when empty', () => {
+    const result: PriorityResult = { linear: [], staleCreated: [], pendingReview: [] }
+    const md = renderPriorities(result)
+    expect(md).toContain('Nothing to do')
+  })
+
+  it('renders linear tasks', () => {
+    const result: PriorityResult = {
+      linear: [{ id: '1', source: 'linear', type: 'task', title: 'Fix bug',
+        url: 'https://linear.app/t/FIX-1', status: 'In Progress',
+        timestamp: new Date(Date.now() - 86400000), description: null, metadata: null }],
+      staleCreated: [], pendingReview: []
+    }
+    const md = renderPriorities(result)
+    expect(md).toContain('Fix bug')
+    expect(md).toContain('1d ago')
   })
 })
