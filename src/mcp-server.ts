@@ -55,7 +55,7 @@ export async function startMcpServer(): Promise<void> {
   }))
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const ai = (request.params.arguments?.ai as boolean) ?? false
+    const ai = typeof request.params.arguments?.ai === 'boolean' ? request.params.arguments.ai : false
     let markdown: string
 
     switch (request.params.name) {
