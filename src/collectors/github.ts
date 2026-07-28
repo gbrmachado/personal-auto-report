@@ -19,10 +19,10 @@ export class GitHubCollector implements Collector {
     const dateStr = range.start.toISOString().split('T')[0]
     const items: CollectedItem[] = []
 
-    const created = await octokit.rest.search.issuesAndPullRequests({
+    const { data: createdData } = await octokit.request('GET /search/issues', {
       q: `author:${username} type:pr created:>=${dateStr}`
     })
-    for (const pr of created.data.items) {
+    for (const pr of createdData.items) {
       const repoInfo = parseRepo(pr.repository_url)
       items.push({
         id: `gh-created-${pr.id}`,
@@ -37,10 +37,10 @@ export class GitHubCollector implements Collector {
       })
     }
 
-    const reviewed = await octokit.rest.search.issuesAndPullRequests({
+    const { data: reviewedData } = await octokit.request('GET /search/issues', {
       q: `reviewed-by:${username} type:pr updated:>=${dateStr}`
     })
-    for (const pr of reviewed.data.items) {
+    for (const pr of reviewedData.items) {
       const repoInfo = parseRepo(pr.repository_url)
       const prNumber = (pr as { number?: number }).number
 

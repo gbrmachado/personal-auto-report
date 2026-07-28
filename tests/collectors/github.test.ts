@@ -1,27 +1,27 @@
 import { describe, it, expect, vi } from 'vitest'
 
-const { mockSearch, mockListReviews } = vi.hoisted(() => ({
-  mockSearch: vi.fn().mockImplementation(({ q }) => {
-    if (q.includes('author:')) {
-      return Promise.resolve({
+const { mockRequest, mockListReviews } = vi.hoisted(() => ({
+  mockRequest: vi.fn().mockImplementation((route, { q } = {}) => {
+    if (q?.includes('author:')) {
+      return {
         data: {
           items: [
             { id: 1, title: 'My PR', html_url: 'https://github.com/foo/bar/pull/1', state: 'open',
-              created_at: '2026-07-27T10:00:00Z', updated_at: '2026-07-27T11:00:00Z',
+              created_at: '2026-07-27T10:00:00Z',
               body: 'desc', number: 1, repository_url: 'https://api.github.com/repos/foo/bar' }
           ]
         }
-      })
+      }
     }
-    return Promise.resolve({
+    return {
       data: {
         items: [
           { id: 2, title: 'Reviewed PR', html_url: 'https://github.com/foo/bar/pull/2', state: 'merged',
-            created_at: '2026-07-26T10:00:00Z', updated_at: '2026-07-28T11:00:00Z',
+            created_at: '2026-07-26T10:00:00Z',
             body: 'desc', number: 2, repository_url: 'https://api.github.com/repos/foo/bar' }
         ]
       }
-    })
+    }
   }),
   mockListReviews: vi.fn().mockResolvedValue({
     data: [
@@ -32,10 +32,8 @@ const { mockSearch, mockListReviews } = vi.hoisted(() => ({
 
 vi.mock('octokit', () => ({
   Octokit: vi.fn().mockImplementation(() => ({
-    rest: {
-      search: { issuesAndPullRequests: mockSearch },
-      pulls: { listReviews: mockListReviews }
-    }
+    request: mockRequest,
+    rest: { pulls: { listReviews: mockListReviews } }
   }))
 }))
 
@@ -52,7 +50,7 @@ describe('GitHubCollector', () => {
     const created = items.find(i => i.type === 'pr_created')
     expect(created).toBeDefined()
     expect(created!.timestamp).toEqual(new Date('2026-07-27T10:00:00Z'))
-    expect(mockSearch).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockRequest).toHaveBeenCalledWith('GET /search/issues', expect.objectContaining({
       q: expect.stringContaining('created:')
     }))
   })
