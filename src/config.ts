@@ -29,6 +29,32 @@ export interface Config {
   db: {
     path: string
   }
+  priorities?: PrioritiesConfig
+}
+
+export interface GitHubPriorityConfig {
+  minAgeDays: number
+  updatedAfterDays: number
+}
+
+export interface PrioritiesConfig {
+  linear: { statuses: string[] }
+  github: {
+    created: GitHubPriorityConfig
+    pendingReview: GitHubPriorityConfig
+  }
+}
+
+const DEFAULT_PRIORITIES: PrioritiesConfig = {
+  linear: { statuses: ['In Progress', 'Todo', 'Backlog'] },
+  github: {
+    created: { minAgeDays: 14, updatedAfterDays: 7 },
+    pendingReview: { minAgeDays: 7, updatedAfterDays: 3 }
+  }
+}
+
+export function getPrioritiesConfig(config: Config): PrioritiesConfig {
+  return config.priorities ?? DEFAULT_PRIORITIES
 }
 
 export function getConfigDir(): string {

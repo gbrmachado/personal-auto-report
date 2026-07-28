@@ -38,6 +38,32 @@ Config is stored at `~/.config/review/config.json` (0600 permissions).
 
 Custom `baseUrl` field supports any OpenAI-compatible API.
 
+### Priorities
+
+The `priorities` section configures which items appear in reviews:
+
+```json
+{
+  "priorities": {
+    "linear": { "statuses": ["In Progress", "Todo", "Backlog"] },
+    "github": {
+      "created": { "minAgeDays": 14, "updatedAfterDays": 7 },
+      "pendingReview": { "minAgeDays": 7, "updatedAfterDays": 3 }
+    }
+  }
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `linear.statuses` | `["In Progress", "Todo", "Backlog"]` | Linear issue statuses to include |
+| `github.created.minAgeDays` | `14` | Min age of created PRs to include |
+| `github.created.updatedAfterDays` | `7` | Max days since update for created PRs |
+| `github.pendingReview.minAgeDays` | `7` | Min age of review PRs to include |
+| `github.pendingReview.updatedAfterDays` | `3` | Max days since update for review PRs |
+
+Omit the section entirely to use defaults.
+
 ### Custom Prompt
 
 Add a `prompt` field to the `ai` config to customize the AI summary
