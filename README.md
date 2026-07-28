@@ -38,6 +38,22 @@ Config is stored at `~/.config/review/config.json` (0600 permissions).
 
 Custom `baseUrl` field supports any OpenAI-compatible API.
 
+### Custom Prompt
+
+Add a `prompt` field to the `ai` config to customize the AI summary
+instructions. Use `{period}` and `{sections}` as placeholders:
+
+```json
+{
+  "ai": {
+    "provider": "openai",
+    "apiKey": "sk-...",
+    "model": "gpt-4o-mini",
+    "prompt": "Summarize my {period} work in a very casual tone:\n{sections}"
+  }
+}
+```
+
 ## CLI Usage
 
 ```bash

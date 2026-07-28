@@ -24,6 +24,7 @@ export interface Config {
     apiKey: string
     model: string
     baseUrl?: string
+    prompt?: string
   }
   db: {
     path: string

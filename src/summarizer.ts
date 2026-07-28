@@ -2,10 +2,14 @@ import OpenAI from 'openai'
 import type { CollectedItem } from './types.js'
 import type { Config } from './config.js'
 
-export function buildPrompt(items: CollectedItem[], period: string): string {
+export function buildPrompt(items: CollectedItem[], period: string, template?: string): string {
   const sections = items.map(i =>
     `[${i.source}/${i.type}] ${i.title} (${i.status ?? 'no status'})${i.description ? '\n  ' + i.description.slice(0, 300) : ''}`
   ).join('\n')
+
+  if (template) {
+    return template.replace('{period}', period).replace('{sections}', sections)
+  }
 
   return `You are a professional review assistant. Summarize the following activity for a ${period} professional review.
 
@@ -30,7 +34,7 @@ export async function generateSummary(items: CollectedItem[], config: Config, pe
 
   const baseURL = config.ai.baseUrl || (config.ai.provider === 'deepseek' ? 'https://api.deepseek.com' : undefined)
   const openai = new OpenAI({ apiKey: config.ai.apiKey, baseURL })
-  const prompt = buildPrompt(items, period)
+  const prompt = buildPrompt(items, period, config.ai.prompt)
 
   const response = await openai.chat.completions.create({
     model: config.ai.model,
