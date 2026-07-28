@@ -88,13 +88,49 @@ export async function startMcpServer(): Promise<void> {
             to: { type: 'string', description: 'End date (YYYY-MM-DD)' }
           }
         }
+      },
+      {
+        name: 'review_priorities',
+        description: 'Show prioritized tasks and stale PRs',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            ai: { type: 'boolean', description: 'Include AI recommendations' }
+          }
+        }
       }
     ]
   }))
 
-  server.setRequestHandler(CallToolRequestSchema, request =>
-    executeReviewTool(request.params.name, request.params.arguments)
-  )
+  server.setRequestHandler(CallToolRequestSchema, async request => {
+    const { name, arguments: args } = request.params
+
+    if (name === 'review_priorities') {
+      try {
+        const ai = typeof args?.ai === 'boolean' ? args.ai : false
+        const { PriorityEngine, renderPriorities } = await import('./priority.js')
+        const { loadConfig } = await import('./config.js')
+        const config = loadConfig()
+        const engine = new PriorityEngine()
+        const result = await engine.collect(config)
+        let markdown = renderPriorities(result)
+        if (ai) {
+          const items = [...result.linear, ...result.staleCreated, ...result.pendingReview]
+          const summary = await (await import('./summarizer.js')).generateSummary(items, config, 'priorities')
+          markdown = markdown.replace('# Priorities', `# Priorities\n\n## AI Recommendations\n${summary}\n`)
+        }
+        return { content: [{ type: 'text' as const, text: markdown }] }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return {
+          content: [{ type: 'text' as const, text: `Error: ${message}` }],
+          isError: true
+        }
+      }
+    }
+
+    return executeReviewTool(name, args)
+  })
 
   const transport = new StdioServerTransport()
   await server.connect(transport)
