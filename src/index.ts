@@ -22,8 +22,10 @@ program
   .command('daily')
   .description('Generate daily review')
   .option('--ai', 'Include AI summary')
+  .option('--from <date>', 'Date (YYYY-MM-DD)')
+  .option('--to <date>', 'End date (YYYY-MM-DD)')
   .action(async (options) => {
-    const md = await generateReview('daily', options.ai ?? false)
+    const md = await generateReview('daily', options.ai ?? false, options.from, options.to)
     console.log(md)
   })
 
@@ -31,8 +33,10 @@ program
   .command('weekly')
   .description('Generate weekly review')
   .option('--ai', 'Include AI summary')
+  .option('--from <date>', 'Start date (YYYY-MM-DD)')
+  .option('--to <date>', 'End date (YYYY-MM-DD)')
   .action(async (options) => {
-    const md = await generateReview('weekly', options.ai ?? false)
+    const md = await generateReview('weekly', options.ai ?? false, options.from, options.to)
     console.log(md)
   })
 
@@ -40,8 +44,10 @@ program
   .command('monthly')
   .description('Generate monthly review')
   .option('--ai', 'Include AI summary')
+  .option('--from <date>', 'Start date (YYYY-MM-DD)')
+  .option('--to <date>', 'End date (YYYY-MM-DD)')
   .action(async (options) => {
-    const md = await generateReview('monthly', options.ai ?? false)
+    const md = await generateReview('monthly', options.ai ?? false, options.from, options.to)
     console.log(md)
   })
 

@@ -6,7 +6,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { generateReview } from './review.js'
 
-type ReviewGenerator = (period: string, useAi: boolean) => Promise<string>
+type ReviewGenerator = (period: string, useAi: boolean, fromDate?: string, toDate?: string) => Promise<string>
 
 export async function executeReviewTool(
   name: string,
@@ -15,6 +15,8 @@ export async function executeReviewTool(
 ) {
   try {
     const ai = typeof args?.ai === 'boolean' ? args.ai : false
+    const fromDate = typeof args?.from === 'string' ? args.from : undefined
+    const toDate = typeof args?.to === 'string' ? args.to : undefined
     const period = name === 'daily_review'
       ? 'daily'
       : name === 'weekly_review'
@@ -25,7 +27,7 @@ export async function executeReviewTool(
 
     if (!period) throw new Error(`Unknown tool: ${name}`)
 
-    const markdown = await reviewGenerator(period, ai)
+    const markdown = await reviewGenerator(period, ai, fromDate, toDate)
     return { content: [{ type: 'text' as const, text: markdown }] }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -57,7 +59,9 @@ export async function startMcpServer(): Promise<void> {
         inputSchema: {
           type: 'object',
           properties: {
-            ai: { type: 'boolean', description: 'Include AI summary' }
+            ai: { type: 'boolean', description: 'Include AI summary' },
+            from: { type: 'string', description: 'Start date (YYYY-MM-DD)' },
+            to: { type: 'string', description: 'End date (YYYY-MM-DD)' }
           }
         }
       },
@@ -67,7 +71,9 @@ export async function startMcpServer(): Promise<void> {
         inputSchema: {
           type: 'object',
           properties: {
-            ai: { type: 'boolean', description: 'Include AI summary' }
+            ai: { type: 'boolean', description: 'Include AI summary' },
+            from: { type: 'string', description: 'Start date (YYYY-MM-DD)' },
+            to: { type: 'string', description: 'End date (YYYY-MM-DD)' }
           }
         }
       },
@@ -77,7 +83,9 @@ export async function startMcpServer(): Promise<void> {
         inputSchema: {
           type: 'object',
           properties: {
-            ai: { type: 'boolean', description: 'Include AI summary' }
+            ai: { type: 'boolean', description: 'Include AI summary' },
+            from: { type: 'string', description: 'Start date (YYYY-MM-DD)' },
+            to: { type: 'string', description: 'End date (YYYY-MM-DD)' }
           }
         }
       }

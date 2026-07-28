@@ -11,20 +11,24 @@ import { generateSummary } from './summarizer.js'
 import { renderReview } from './renderer.js'
 import { join } from 'path'
 
-export function getDateRange(period: string): DateRange {
-  const now = new Date()
-  const start = new Date(now)
+export function getDateRange(period: string, fromDate?: string, toDate?: string): DateRange {
+  const start = fromDate ? new Date(fromDate + 'T00:00:00') : new Date()
+  const now = toDate ? new Date(toDate + 'T23:59:59') : (fromDate ? new Date(fromDate + 'T23:59:59') : new Date())
 
-  if (period === 'daily') {
-    start.setHours(0, 0, 0, 0)
-  } else if (period === 'weekly') {
-    const day = start.getDay()
-    const diff = start.getDate() - day + (day === 0 ? -6 : 1)
-    start.setDate(diff)
-    start.setHours(0, 0, 0, 0)
-  } else if (period === 'monthly') {
-    start.setDate(1)
-    start.setHours(0, 0, 0, 0)
+  if (!fromDate) {
+    const startCopy = new Date(now)
+    if (period === 'daily') {
+      startCopy.setHours(0, 0, 0, 0)
+    } else if (period === 'weekly') {
+      const day = startCopy.getDay()
+      const diff = startCopy.getDate() - day + (day === 0 ? -6 : 1)
+      startCopy.setDate(diff)
+      startCopy.setHours(0, 0, 0, 0)
+    } else if (period === 'monthly') {
+      startCopy.setDate(1)
+      startCopy.setHours(0, 0, 0, 0)
+    }
+    return { start: startCopy, end: now }
   }
 
   return { start, end: now }
@@ -62,9 +66,9 @@ export async function collectFresh(
   return { items: aggregate(items), warnings }
 }
 
-export async function generateReview(period: string, useAi: boolean): Promise<string> {
+export async function generateReview(period: string, useAi: boolean, fromDate?: string, toDate?: string): Promise<string> {
   const config = loadConfig()
-  const range = getDateRange(period)
+  const range = getDateRange(period, fromDate, toDate)
   const dateLabel = formatDateLabel(range, period)
   const dbPath = config.db.path || join(getConfigDir(), 'review.db')
   const db = getDb(dbPath)

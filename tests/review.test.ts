@@ -18,6 +18,19 @@ describe('date range helpers', () => {
     const range = getDateRange('weekly')
     expect(range.start.getDay()).toBe(1)
   })
+
+  it('accepts custom from and to dates', async () => {
+    const { getDateRange } = await import('../src/review.js')
+    const range = getDateRange('daily', '2026-07-26', '2026-07-27')
+    expect(range.start.getFullYear()).toBe(2026)
+    expect(range.start.getMonth()).toBe(6) // July
+    expect(range.start.getDate()).toBe(26)
+    expect(range.start.getHours()).toBe(0)
+    expect(range.end.getFullYear()).toBe(2026)
+    expect(range.end.getMonth()).toBe(6)
+    expect(range.end.getDate()).toBe(27)
+    expect(range.end.getHours()).toBe(23)
+  })
 })
 
 describe('fresh collection', () => {
