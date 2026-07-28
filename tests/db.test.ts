@@ -1,0 +1,37 @@
+import { describe, it, expect, afterEach } from 'vitest'
+import { rmSync, existsSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
+import { getDb, insertCollections, getCollectionsInRange } from '../src/db.js'
+
+describe('db', () => {
+  const testDir = join(tmpdir(), 'review-test-' + Date.now())
+  const testDbPath = join(testDir, 'test.db')
+
+  afterEach(() => {
+    if (existsSync(testDir)) rmSync(testDir, { recursive: true, force: true })
+  })
+
+  it('creates tables on initialization', () => {
+    const db = getDb(testDbPath)
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]
+    expect(tables.map(t => t.name)).toContain('collections')
+    expect(tables.map(t => t.name)).toContain('reviews')
+    db.close()
+  })
+
+  it('inserts and retrieves collections', () => {
+    const db = getDb(testDbPath)
+    const item = {
+      id: 'test-1', source: 'linear', type: 'task',
+      title: 'Test task', url: 'https://linear.app/test',
+      status: 'done', timestamp: '2026-07-27T10:00:00Z',
+      description: null, metadata: null, collected_date: '2026-07-27'
+    }
+    insertCollections(db, [item])
+    const rows = getCollectionsInRange(db, '2026-07-27', '2026-07-27')
+    expect(rows).toHaveLength(1)
+    expect(rows[0].title).toBe('Test task')
+    db.close()
+  })
+})
