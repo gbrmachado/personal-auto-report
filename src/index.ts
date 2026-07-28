@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
+import { initConfig } from './config.js'
+import { generateReview } from './review.js'
 
 const program = new Command()
 program
@@ -11,7 +13,6 @@ program
   .command('init')
   .description('Initialize configuration')
   .action(async () => {
-    const { initConfig } = await import('./config.js')
     await initConfig()
     console.log('Configuration saved to ~/.config/review/config.json')
   })
@@ -21,7 +22,8 @@ program
   .description('Generate daily review')
   .option('--ai', 'Include AI summary')
   .action(async (options) => {
-    console.log('Daily review coming soon')
+    const md = await generateReview('daily', options.ai ?? false)
+    console.log(md)
   })
 
 program
@@ -29,7 +31,8 @@ program
   .description('Generate weekly review')
   .option('--ai', 'Include AI summary')
   .action(async (options) => {
-    console.log('Weekly review coming soon')
+    const md = await generateReview('weekly', options.ai ?? false)
+    console.log(md)
   })
 
 program
@@ -37,14 +40,16 @@ program
   .description('Generate monthly review')
   .option('--ai', 'Include AI summary')
   .action(async (options) => {
-    console.log('Monthly review coming soon')
+    const md = await generateReview('monthly', options.ai ?? false)
+    console.log(md)
   })
 
 program
   .command('serve')
   .description('Start MCP server')
   .action(async () => {
-    console.log('MCP server coming soon')
+    const { startMcpServer } = await import('./mcp-server.js')
+    await startMcpServer()
   })
 
 program.parse()
