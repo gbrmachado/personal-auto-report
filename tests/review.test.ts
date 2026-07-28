@@ -41,3 +41,78 @@ describe('fresh collection', () => {
     expect(second.warnings).toEqual(['failing collector failed: unavailable'])
   })
 })
+
+describe('AI failure resilience', () => {
+  it('returns raw review when AI summary throws', async () => {
+    const { mockClose } = vi.hoisted(() => ({
+      mockClose: vi.fn()
+    }))
+
+    vi.mock('../src/config.js', () => ({
+      loadConfig: () => ({
+        linear: { apiKey: 'test' },
+        github: { token: 'test' },
+        slack: { token: 'test' },
+        user: { linear: 'me', github: 'me', slack: 'me' },
+        ai: { provider: 'openai', apiKey: 'test', model: 'gpt-4o-mini' },
+        db: { path: ':memory:' }
+      }),
+      getConfigDir: () => '/tmp'
+    }))
+
+    vi.mock('../src/db.js', () => ({
+      getDb: () => ({ close: mockClose, pragma: vi.fn(), exec: vi.fn() }),
+      insertCollections: vi.fn(),
+      insertReview: vi.fn()
+    }))
+
+    vi.mock('../src/collectors/linear.js', () => ({
+      LinearCollector: vi.fn().mockImplementation(() => ({
+        name: 'linear',
+        collect: vi.fn().mockResolvedValue([])
+      }))
+    }))
+    vi.mock('../src/collectors/github.js', () => ({
+      GitHubCollector: vi.fn().mockImplementation(() => ({
+        name: 'github',
+        collect: vi.fn().mockResolvedValue([])
+      }))
+    }))
+    vi.mock('../src/collectors/slack.js', () => ({
+      SlackCollector: vi.fn().mockImplementation(() => ({
+        name: 'slack',
+        collect: vi.fn().mockResolvedValue([{
+          id: 'sl-test',
+          source: 'slack',
+          type: 'slack_message',
+          title: 'test message',
+          url: null,
+          status: null,
+          timestamp: new Date('2026-07-27T10:00:00Z'),
+          description: null,
+          metadata: null
+        }])
+      }))
+    }))
+
+    vi.mock('../src/summarizer.js', () => ({
+      generateSummary: vi.fn().mockRejectedValue(new Error('API quota exceeded'))
+    }))
+
+    vi.mock('../src/aggregator.js', () => ({
+      aggregate: vi.fn((items) => items)
+    }))
+
+    vi.mock('../src/renderer.js', () => ({
+      renderReview: vi.fn(() => '# Raw Review\n\nNo AI today')
+    }))
+
+    const { generateReview } = await import('../src/review.js')
+
+    const result = await generateReview('daily', true)
+
+    expect(result).toContain('# Raw Review')
+    expect(result).not.toContain('## AI Summary')
+    expect(mockClose).toHaveBeenCalled()
+  })
+})

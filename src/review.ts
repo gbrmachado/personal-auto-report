@@ -92,25 +92,34 @@ export async function generateReview(period: string, useAi: boolean): Promise<st
     timestamp: item.timestamp.toISOString(),
     description: item.description,
     metadata: item.metadata ? JSON.stringify(item.metadata) : null,
-    collected_date: startStr
+    collected_date: item.timestamp.toISOString().split('T')[0]
   }))
   insertCollections(db, rows)
 
   let aiSummary: string | undefined
   if (useAi) {
-    aiSummary = await generateSummary(items, config, period)
+    try {
+      aiSummary = await generateSummary(items, config, period)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      warnings.push(`AI summary failed: ${message}`)
+      console.error(`AI summary failed: ${message}`)
+    }
   }
 
-  const markdown = renderReview(items, period, dateLabel, aiSummary, warnings)
+  try {
+    const markdown = renderReview(items, period, dateLabel, aiSummary, warnings)
 
-  insertReview(db, {
-    period,
-    date_start: startStr,
-    date_end: endStr,
-    raw_markdown: markdown,
-    ai_summary: aiSummary ?? null
-  })
+    insertReview(db, {
+      period,
+      date_start: startStr,
+      date_end: endStr,
+      raw_markdown: markdown,
+      ai_summary: aiSummary ?? null
+    })
 
-  db.close()
-  return markdown
+    return markdown
+  } finally {
+    db.close()
+  }
 }
