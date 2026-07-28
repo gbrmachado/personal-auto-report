@@ -49,7 +49,7 @@ src/mcp-server.ts    MCP server (stdio transport), executeReviewTool
 - DB at `~/.config/review/review.db`
 - Vitest for testing — mock all external APIs (never hit real services)
 - tsup for bundling — use `--platform node` for Node built-ins
-- `mise` for Node version management (`.mise.toml`)
+- `.nvmrc` for Node version (works with nvm, fnm, mise)
 - Collectors implement `Collector` interface from `src/collector.ts`
 - Each collector runs independently — one failure doesn't block others
 - TDD: write test first, watch it fail, implement, verify pass
