@@ -52,4 +52,7 @@ program
     await startMcpServer()
   })
 
-program.parse()
+program.parseAsync().catch(err => {
+  console.error('Error:', err.message)
+  process.exit(1)
+})

@@ -43,6 +43,16 @@ describe('summarizer', () => {
     await expect(generateSummary(items, config as any, 'daily')).rejects.toThrow('Unsupported AI provider')
   })
 
+  it('works with deepseek provider', async () => {
+    const items: CollectedItem[] = [
+      { id: '1', source: 'linear', type: 'task', title: 'Test deepseek', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }
+    ]
+    const config = { ai: { apiKey: 'ds-key', provider: 'deepseek', model: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' } }
+    const result = await generateSummary(items, config as any, 'daily')
+    expect(mockCreate).toHaveBeenCalled()
+    expect(result).toBe('Mock summary content')
+  })
+
   it('calls OpenAI and returns generated summary', async () => {
     const items: CollectedItem[] = [
       { id: '1', source: 'linear', type: 'task', title: 'Fix login bug', url: null, status: 'Done', timestamp: new Date(), description: 'Users could not log in with SSO', metadata: null }

@@ -55,25 +55,32 @@ export async function startMcpServer(): Promise<void> {
   }))
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const ai = typeof request.params.arguments?.ai === 'boolean' ? request.params.arguments.ai : false
-    let markdown: string
+    try {
+      const ai = typeof request.params.arguments?.ai === 'boolean' ? request.params.arguments.ai : false
+      let markdown: string
 
-    switch (request.params.name) {
-      case 'daily_review':
-        markdown = await generateReview('daily', ai)
-        break
-      case 'weekly_review':
-        markdown = await generateReview('weekly', ai)
-        break
-      case 'monthly_review':
-        markdown = await generateReview('monthly', ai)
-        break
-      default:
-        throw new Error(`Unknown tool: ${request.params.name}`)
-    }
+      switch (request.params.name) {
+        case 'daily_review':
+          markdown = await generateReview('daily', ai)
+          break
+        case 'weekly_review':
+          markdown = await generateReview('weekly', ai)
+          break
+        case 'monthly_review':
+          markdown = await generateReview('monthly', ai)
+          break
+        default:
+          throw new Error(`Unknown tool: ${request.params.name}`)
+      }
 
-    return {
-      content: [{ type: 'text', text: markdown }]
+      return {
+        content: [{ type: 'text', text: markdown }]
+      }
+    } catch (err) {
+      return {
+        content: [{ type: 'text', text: `Error: ${err.message}` }],
+        isError: true
+      }
     }
   })
 

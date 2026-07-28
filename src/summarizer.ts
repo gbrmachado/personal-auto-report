@@ -24,11 +24,12 @@ ${sections}`
 export async function generateSummary(items: CollectedItem[], config: Config, period: string): Promise<string> {
   if (items.length === 0) return 'No activity to summarize.'
 
-  if (config.ai.provider !== 'openai') {
-    throw new Error(`Unsupported AI provider: ${config.ai.provider}. Only 'openai' is supported.`)
+  if (!['openai', 'deepseek'].includes(config.ai.provider)) {
+    throw new Error(`Unsupported AI provider: ${config.ai.provider}. Supported: openai, deepseek`)
   }
 
-  const openai = new OpenAI({ apiKey: config.ai.apiKey })
+  const baseURL = config.ai.baseUrl || undefined
+  const openai = new OpenAI({ apiKey: config.ai.apiKey, baseURL })
   const prompt = buildPrompt(items, period)
 
   const response = await openai.chat.completions.create({

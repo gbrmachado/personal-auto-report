@@ -1,6 +1,6 @@
 import type { CollectedItem, DateRange } from './types.js'
 import { loadConfig, getConfigDir } from './config.js'
-import { getDb, insertCollections, insertReview, getCollectionsInRange } from './db.js'
+import { getDb, insertCollections, insertReview } from './db.js'
 import { LinearCollector } from './collectors/linear.js'
 import { GitHubCollector } from './collectors/github.js'
 import { SlackCollector } from './collectors/slack.js'
@@ -47,52 +47,40 @@ export async function generateReview(period: string, useAi: boolean): Promise<st
 
   const startStr = range.start.toISOString().split('T')[0]
   const endStr = range.end.toISOString().split('T')[0]
-  let items: CollectedItem[] = getCollectionsInRange(db, startStr, endStr).map(r => ({
-    id: r.id,
-    source: r.source as CollectedItem['source'],
-    type: r.type as CollectedItem['type'],
-    title: r.title,
-    url: r.url,
-    status: r.status,
-    timestamp: new Date(r.timestamp),
-    description: r.description,
-    metadata: r.metadata ? JSON.parse(r.metadata) : null
-  }))
+
+  // Always fetch fresh data
+  const collectors = [
+    new LinearCollector(),
+    new GitHubCollector(),
+    new SlackCollector()
+  ]
 
   const warnings: string[] = []
-
-  if (items.length === 0) {
-    const collectors = [
-      new LinearCollector(),
-      new GitHubCollector(),
-      new SlackCollector()
-    ]
-
-    const results = await Promise.allSettled(
-      collectors.map(c => c.collect(range, config).catch((err: Error) => {
-        const msg = `${c.name} collector failed: ${err.message}`
-        console.error(msg)
-        warnings.push(msg)
-        return [] as CollectedItem[]
-      }))
-    )
-
-    items = aggregate(results.flatMap(r => r.status === 'fulfilled' ? r.value : []))
-
-    const rows = items.map(item => ({
-      id: item.id,
-      source: item.source,
-      type: item.type,
-      title: item.title,
-      url: item.url,
-      status: item.status,
-      timestamp: item.timestamp.toISOString(),
-      description: item.description,
-      metadata: item.metadata ? JSON.stringify(item.metadata) : null,
-      collected_date: startStr
+  const results = await Promise.allSettled(
+    collectors.map(c => c.collect(range, config).catch((err: Error) => {
+      const msg = `${c.name} collector failed: ${err.message}`
+      console.error(msg)
+      warnings.push(msg)
+      return [] as CollectedItem[]
     }))
-    insertCollections(db, rows)
-  }
+  )
+
+  const items = aggregate(results.flatMap(r => r.status === 'fulfilled' ? r.value : []))
+
+  // Store in DB for historical queries
+  const rows = items.map(item => ({
+    id: item.id,
+    source: item.source,
+    type: item.type,
+    title: item.title,
+    url: item.url,
+    status: item.status,
+    timestamp: item.timestamp.toISOString(),
+    description: item.description,
+    metadata: item.metadata ? JSON.stringify(item.metadata) : null,
+    collected_date: startStr
+  }))
+  insertCollections(db, rows)
 
   let aiSummary: string | undefined
   if (useAi) {

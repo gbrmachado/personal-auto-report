@@ -12,9 +12,10 @@ export interface Config {
     slack: string
   }
   ai: {
-    provider: 'openai' | 'anthropic'
+    provider: 'openai' | 'deepseek'
     apiKey: string
     model: string
+    baseUrl?: string
   }
   db: {
     path: string
@@ -60,9 +61,10 @@ export async function initConfig(): Promise<void> {
       slack: await q('Your Slack member ID')
     },
     ai: {
-      provider: (await q('AI provider (openai/anthropic)')) as 'openai' | 'anthropic' || 'openai',
+      provider: (await q('AI provider (openai/deepseek)')) || 'openai',
       apiKey: await q('AI API Key'),
-      model: await q('AI model (default: gpt-4o-mini)') || 'gpt-4o-mini'
+      model: await q('AI model (default: gpt-4o-mini)') || 'gpt-4o-mini',
+      baseUrl: await q('API base URL (optional, for deepseek use https://api.deepseek.com)') || undefined
     },
     db: {
       path: join(getConfigDir(), 'review.db')
