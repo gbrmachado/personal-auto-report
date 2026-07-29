@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderReview } from '../src/renderer.js'
-import type { CollectedItem } from '../src/types.js'
+import type { CollectedItem, CrossRef } from '../src/types.js'
 
 describe('renderer', () => {
   it('renders daily review with all sections', () => {
@@ -21,6 +21,36 @@ describe('renderer', () => {
   it('renders heading for weekly reviews', () => {
     const md = renderReview([], 'weekly', 'Jul 21 - Jul 27')
     expect(md).toContain('# Weekly Review — Jul 21 - Jul 27')
+  })
+
+  it('adds Related column when cross-references exist', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const crossRefs: CrossRef[] = [
+      {
+        sourceItemId: 'slack-c1',
+        targetItemId: 'linear-1',
+        relationType: 'mentioned_in' as const,
+        context: 'check ENG-1'
+      },
+      {
+        sourceItemId: 'gh-1',
+        targetItemId: 'linear-1',
+        relationType: 'implements' as const,
+        context: 'ENG-1 fix'
+      }
+    ]
+    const items: CollectedItem[] = [
+      {
+        id: 'linear-1', source: 'linear', type: 'task',
+        title: 'Test', url: null, status: 'Done',
+        timestamp: new Date(), description: null,
+        metadata: { identifier: 'ENG-1' }
+      }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-29', undefined, [], crossRefs)
+    expect(result).toContain('Related')
+    expect(result).toContain('💬 slack')
+    expect(result).toContain('🔀 pr')
   })
 
   it('renders warnings section when warnings are provided', () => {

@@ -26,10 +26,18 @@ export function renderReview(
 
   if (byType.task?.length) {
     lines.push('## Linear Tasks')
-    lines.push('| Title | Status | Link |')
-    lines.push('|-------|--------|------|')
+    lines.push('| Title | Status | Related | Link |')
+    lines.push('|-------|--------|---------|------|')
     for (const item of byType.task) {
-      lines.push(`| ${item.title} | ${item.status ?? '-'} | ${item.url ?? '-'} |`)
+      const related = crossRefs
+        .filter(cr => cr.targetItemId === item.id)
+        .map(cr => {
+          if (cr.relationType === 'mentioned_in') return '💬 slack'
+          if (cr.relationType === 'implements') return '🔀 pr'
+          return cr.relationType
+        })
+        .join(', ') || '-'
+      lines.push(`| ${item.title} | ${item.status ?? '-'} | ${related} | ${item.url ?? '-'} |`)
     }
     lines.push('')
   }
