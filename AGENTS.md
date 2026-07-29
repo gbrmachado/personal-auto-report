@@ -69,3 +69,9 @@ src/mcp-server.ts    MCP stdio server, 4 tools (daily/weekly/monthly review + pr
 - Collectors implement `Collector` interface from `src/collector.ts`
 - Tests default: vitest config in `package.json` scripts (no `vitest.config.ts`)
 - Capped 7-day range for all custom date queries
+
+## Workflow
+
+- **Never push directly to `main`.** Always create a feature branch, push it, and open a PR.
+- After PR approval, merge via GitHub UI (squash or merge commit).
+- CI runs on every push and PR via `.github/workflows/ci.yml`.
