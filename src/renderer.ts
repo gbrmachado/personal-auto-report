@@ -50,15 +50,15 @@ export function renderReview(
         ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
 
         for (const ri of relatedItems) {
-          const dateLabel = ri.timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          const itemDateLabel = ri.timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           const cr = liCrossRefs.find(c => c.sourceItemId === ri.id)
           const ctx = cr?.context ? ` — ${cr.context}` : ''
           if (ri.source === 'github') {
             const repo = (ri.metadata?.repo as string) ?? ''
-            lines.push(`- **${dateLabel}** — 🔀 PR opened (${repo})${ctx}`)
+            lines.push(`- **${itemDateLabel}** — 🔀 PR opened (${repo})${ctx}`)
           } else if (ri.source === 'slack') {
             const channel = (ri.metadata?.channel as string) ?? 'channel'
-            lines.push(`- **${dateLabel}** — 💬 Discussed in #${channel}${ctx}`)
+            lines.push(`- **${itemDateLabel}** — 💬 Discussed in #${channel}${ctx}`)
           }
         }
 

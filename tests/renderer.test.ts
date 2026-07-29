@@ -110,6 +110,81 @@ describe('renderer', () => {
     expect(result).not.toContain('## Task Narratives')
   })
 
+  it('skips task narratives when crossRefs target no linear items', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'linear-1', source: 'linear', type: 'task', title: 'T', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { identifier: 'ENG-1' } }
+    ]
+    const crossRefs = [{ sourceItemId: 's1', targetItemId: 'nonexistent', relationType: 'mentioned_in' as const, context: 'irrelevant' }]
+    const result = renderReview(items, 'daily', '2026-07-29', 'Summary', [], crossRefs)
+    expect(result).not.toContain('Task Narratives')
+  })
+
+  it('falls back to item id in narrative heading when identifier is missing', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'linear-uuid', source: 'linear', type: 'task', title: 'T', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: {} }
+    ]
+    const crossRefs = [{ sourceItemId: 's1', targetItemId: 'linear-uuid', relationType: 'mentioned_in' as const, context: 'chat' }]
+    const itemsWithSource: CollectedItem[] = [
+      ...items,
+      { id: 's1', source: 'slack', type: 'slack_message', title: 'ENG-1 done', url: null, status: null, timestamp: new Date(), description: null, metadata: null }
+    ]
+    const result = renderReview(itemsWithSource, 'daily', '', 'Summary', [], crossRefs)
+    expect(result).toContain('### linear-uuid')
+  })
+
+  it('shows completed in narrative when task status is null', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'linear-1', source: 'linear', type: 'task', title: 'T', url: null, status: null, timestamp: new Date(), description: null, metadata: { identifier: 'ENG-1' } }
+    ]
+    const crossRefs = [{ sourceItemId: 's1', targetItemId: 'linear-1', relationType: 'mentioned_in' as const, context: '' }]
+    const itemsWithSource: CollectedItem[] = [
+      ...items,
+      { id: 's1', source: 'slack', type: 'slack_message', title: 'ENG-1 done', url: null, status: null, timestamp: new Date(), description: null, metadata: null }
+    ]
+    const result = renderReview(itemsWithSource, 'daily', '', 'Summary', [], crossRefs)
+    expect(result).toContain('✅ completed')
+  })
+
+  it('shows dash in Related column when no cross-refs match', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'linear-1', source: 'linear', type: 'task', title: 'T', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }
+    ]
+    const result = renderReview(items, 'daily', '', undefined, [], [])
+    expect(result).toContain('| - |')
+  })
+
+  it('renders unknown relationType verbatim in Related column', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'linear-1', source: 'linear', type: 'task', title: 'T', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }
+    ]
+    const crossRefs = [{ sourceItemId: 's1', targetItemId: 'linear-1', relationType: 'blocks' as any, context: '' }]
+    const result = renderReview(items, 'daily', '', undefined, [], crossRefs as any)
+    expect(result).toContain('blocks')
+  })
+
+  it('sorts related items chronologically in task narratives', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'linear-1', source: 'linear', type: 'task', title: 'T', url: null, status: 'Done', timestamp: new Date('2026-07-28T10:00:00Z'), description: null, metadata: { identifier: 'ENG-1' } },
+      { id: 'gh-1', source: 'github', type: 'pr_created', title: 'PR later', url: null, status: 'open', timestamp: new Date('2026-07-29T12:00:00Z'), description: null, metadata: { repo: 'r' } },
+      { id: 'slack-1', source: 'slack', type: 'slack_message', title: 'Slack earlier', url: null, status: null, timestamp: new Date('2026-07-29T08:00:00Z'), description: null, metadata: { channel: 'eng' } }
+    ]
+    const crossRefs = [
+      { sourceItemId: 'gh-1', targetItemId: 'linear-1', relationType: 'implements' as const, context: '' },
+      { sourceItemId: 'slack-1', targetItemId: 'linear-1', relationType: 'mentioned_in' as const, context: '' }
+    ]
+    const result = renderReview(items, 'daily', '', 'Summary', [], crossRefs)
+    const slackIdx = result.indexOf('Discussed in #eng')
+    const prIdx = result.indexOf('PR opened')
+    expect(slackIdx).toBeGreaterThan(0)
+    expect(prIdx).toBeGreaterThan(slackIdx)
+  })
+
   it('renders warnings section when warnings are provided', () => {
     const md = renderReview([], 'daily', '2026-07-27', undefined, [
       'Linear collector failed: API timeout',

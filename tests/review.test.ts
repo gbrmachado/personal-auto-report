@@ -177,4 +177,33 @@ describe('cross-reference integration', () => {
     expect(crossRefsArg).toHaveLength(1)
     expect(crossRefsArg[0].relationType).toBe('implements')
   })
+
+  it('includes slack cross-references in integration', async () => {
+    mockRenderReview.mockClear()
+    mockRenderReview.mockReturnValue('# Review')
+    mockLinearCollect.mockResolvedValue([{
+      id: 'linear-1', source: 'linear', type: 'task',
+      title: 'Test', url: null, status: 'Done',
+      timestamp: new Date('2026-07-29'), description: null,
+      metadata: { identifier: 'ENG-1' }
+    }])
+    mockGithubCollect.mockResolvedValue([])
+    mockSlackCollect.mockResolvedValue([{
+      id: 'slack-1', source: 'slack', type: 'slack_message',
+      title: 'ENG-1 is deployed', url: null, status: null,
+      timestamp: new Date('2026-07-29'), description: null,
+      metadata: { channel: 'eng' }
+    }])
+
+    const { generateReview } = await import('../src/review.js')
+    await generateReview('daily', false)
+
+    const calls = mockRenderReview.mock.calls
+    expect(calls.length).toBeGreaterThan(0)
+    const args = calls[0] as unknown as unknown[]
+    expect(args.length).toBeGreaterThanOrEqual(6)
+    const crossRefsArg = args[5] as Array<{ relationType: string }>
+    expect(crossRefsArg).toHaveLength(1)
+    expect(crossRefsArg[0].relationType).toBe('mentioned_in')
+  })
 })
