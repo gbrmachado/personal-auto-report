@@ -75,3 +75,13 @@ src/mcp-server.ts    MCP stdio server, 4 tools (daily/weekly/monthly review + pr
 - **Never push directly to `main`.** Always create a feature branch, push it, and open a PR.
 - After PR approval, merge via GitHub UI (squash or merge commit).
 - CI runs on every push and PR via `.github/workflows/ci.yml`.
+
+## Before Merging a PR
+
+Run the full suite locally — pre-existing errors in unchanged files will block CI regardless of diff scope:
+
+```bash
+npm run build && npm run typecheck && npm test
+```
+
+Don't rely on reviewers catching pre-existing issues. The CI gate exists, but verifying locally avoids wasted CI cycles on known failures.
