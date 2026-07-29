@@ -53,6 +53,64 @@ describe('renderer', () => {
     expect(result).toContain('🔀 pr')
   })
 
+  it('renders task narratives when aiSummary is present', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const now = new Date('2026-07-29T12:00:00Z')
+    const crossRefs = [
+      {
+        sourceItemId: 'slack-c1',
+        targetItemId: 'linear-1',
+        relationType: 'mentioned_in' as const,
+        context: 'discussed in #eng'
+      },
+      {
+        sourceItemId: 'gh-1',
+        targetItemId: 'linear-1',
+        relationType: 'implements' as const,
+        context: 'PR #42'
+      }
+    ]
+    const items: CollectedItem[] = [
+      {
+        id: 'linear-1', source: 'linear', type: 'task',
+        title: 'Test ENG-1', url: null, status: 'Done',
+        timestamp: new Date('2026-07-28T10:00:00Z'), description: null,
+        metadata: { identifier: 'ENG-1' }
+      },
+      {
+        id: 'gh-1', source: 'github', type: 'pr_created',
+        title: 'ENG-1 fix', url: null, status: 'merged',
+        timestamp: new Date('2026-07-29T08:00:00Z'), description: null,
+        metadata: { repo: 'org/repo' }
+      },
+      {
+        id: 'slack-c1', source: 'slack', type: 'slack_message',
+        title: 'discussed in #eng', url: null, status: null,
+        timestamp: new Date('2026-07-29T09:00:00Z'), description: null,
+        metadata: { channel: 'eng' }
+      }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-29', 'AI summary here', [], crossRefs)
+    expect(result).toContain('## Task Narratives')
+    expect(result).toContain('Test ENG-1')
+    expect(result).toContain('Jul 29')
+    expect(result).toContain('PR #42')
+  })
+
+  it('skips task narratives when aiSummary is absent', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      {
+        id: 'linear-1', source: 'linear', type: 'task',
+        title: 'Test', url: null, status: 'Done',
+        timestamp: new Date(), description: null,
+        metadata: { identifier: 'ENG-1' }
+      }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-29', undefined, [], [])
+    expect(result).not.toContain('## Task Narratives')
+  })
+
   it('renders warnings section when warnings are provided', () => {
     const md = renderReview([], 'daily', '2026-07-27', undefined, [
       'Linear collector failed: API timeout',

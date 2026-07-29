@@ -22,6 +22,54 @@ export function renderReview(
     lines.push('')
   }
 
+  if (aiSummary && crossRefs.length > 0) {
+    const linearItems = items.filter(i => i.source === 'linear')
+    const hasNarratives = linearItems.some(li =>
+      crossRefs.some(cr => cr.targetItemId === li.id)
+    )
+
+    if (hasNarratives) {
+      lines.push('## Task Narratives')
+      lines.push('')
+
+      for (const li of linearItems) {
+        const liCrossRefs = crossRefs.filter(cr => cr.targetItemId === li.id)
+        if (liCrossRefs.length === 0) continue
+
+        const identifier = (li.metadata?.identifier as string) ?? li.id
+        lines.push(`### ${identifier} — ${li.title}`)
+        lines.push('')
+
+        // Task created event
+        const createdLabel = new Date(li.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        lines.push(`- **${createdLabel}** — 🎯 Task created`)
+
+        // Gather related source items sorted by timestamp
+        const relatedItems = items.filter(i =>
+          liCrossRefs.some(cr => cr.sourceItemId === i.id)
+        ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+
+        for (const ri of relatedItems) {
+          const dateLabel = ri.timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          const cr = liCrossRefs.find(c => c.sourceItemId === ri.id)
+          const ctx = cr?.context ? ` — ${cr.context}` : ''
+          if (ri.source === 'github') {
+            const repo = (ri.metadata?.repo as string) ?? ''
+            lines.push(`- **${dateLabel}** — 🔀 PR opened (${repo})${ctx}`)
+          } else if (ri.source === 'slack') {
+            const channel = (ri.metadata?.channel as string) ?? 'channel'
+            lines.push(`- **${dateLabel}** — 💬 Discussed in #${channel}${ctx}`)
+          }
+        }
+
+        // Status event
+        const statusLabel = li.status ?? 'completed'
+        lines.push(`- **${createdLabel}** — ✅ ${statusLabel}`)
+        lines.push('')
+      }
+    }
+  }
+
   const byType = groupByType(items)
 
   if (byType.task?.length) {
