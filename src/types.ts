@@ -14,3 +14,10 @@ export interface DateRange {
   start: Date
   end: Date
 }
+
+export interface CrossRef {
+  sourceItemId: string
+  targetItemId: string
+  relationType: 'mentioned_in' | 'implements'
+  context: string
+}
