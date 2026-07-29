@@ -83,6 +83,27 @@ export class GitHubCollector implements Collector {
       })
     }
 
+    const { data: assignedData } = await octokit.request('GET /search/issues', {
+      q: `assignee:${username} type:pr updated:>=${dateStr}`
+    })
+    const existingIds = new Set(items.map(i => i.id.replace(/^gh-(created|reviewed)-/, '')))
+    for (const pr of assignedData.items) {
+      if (!existingIds.has(String(pr.id))) {
+        const repoInfo = parseRepo(pr.repository_url)
+        items.push({
+          id: `gh-assigned-${pr.id}`,
+          source: 'github',
+          type: 'pr_assigned',
+          title: pr.title,
+          url: pr.html_url,
+          status: pr.state,
+          timestamp: new Date(pr.updated_at),
+          description: pr.body ?? null,
+          metadata: { repo: repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null }
+        })
+      }
+    }
+
     return items
   }
 }

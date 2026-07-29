@@ -1,7 +1,7 @@
 export interface CollectedItem {
   id: string
   source: 'linear' | 'github' | 'slack'
-  type: 'task' | 'pr_created' | 'pr_reviewed' | 'slack_message'
+  type: 'task' | 'pr_created' | 'pr_reviewed' | 'pr_assigned' | 'slack_message'
   title: string
   url: string | null
   status: string | null
