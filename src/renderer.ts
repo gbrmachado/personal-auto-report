@@ -1,4 +1,4 @@
-import type { CollectedItem } from './types.js'
+import type { CollectedItem, CrossRef } from './types.js'
 import { groupByType } from './aggregator.js'
 
 export function renderReview(
@@ -6,7 +6,8 @@ export function renderReview(
   period: string,
   dateLabel: string,
   aiSummary?: string,
-  warnings?: string[]
+  warnings?: string[],
+  crossRefs: CrossRef[] = []
 ): string {
   const lines: string[] = []
   const heading = period === 'daily' ? 'Daily' : period === 'weekly' ? 'Weekly' : 'Monthly'

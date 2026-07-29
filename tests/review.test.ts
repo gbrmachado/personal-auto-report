@@ -2,6 +2,39 @@ import { describe, it, expect, vi } from 'vitest'
 import type { Collector } from '../src/collector.js'
 import type { Config } from '../src/config.js'
 
+const { mockRenderReview, mockDbClose } = vi.hoisted(() => ({
+  mockRenderReview: vi.fn(() => '# Review'),
+  mockDbClose: vi.fn()
+}))
+
+vi.mock('../src/renderer.js', () => ({ renderReview: mockRenderReview }))
+
+vi.mock('../src/config.js', () => ({
+  loadConfig: () => ({
+    linear: { apiKey: 'test' },
+    github: { token: 'test' },
+    slack: { token: 'test' },
+    user: { linear: 'me', github: 'me', slack: 'me' },
+    ai: { provider: 'openai', apiKey: 'test', model: 'gpt-4o-mini' },
+    db: { path: ':memory:' }
+  }),
+  getConfigDir: () => '/tmp'
+}))
+
+vi.mock('../src/db.js', () => ({
+  getDb: () => ({ close: mockDbClose, pragma: vi.fn(), exec: vi.fn() }),
+  insertCollections: vi.fn(),
+  insertReview: vi.fn()
+}))
+
+vi.mock('../src/aggregator.js', () => ({
+  aggregate: vi.fn((items: any) => items)
+}))
+
+vi.mock('../src/summarizer.js', () => ({
+  generateSummary: vi.fn().mockRejectedValue(new Error('API quota exceeded'))
+}))
+
 describe('date range helpers', () => {
   it('daily range starts at midnight today', async () => {
     const { getDateRange } = await import('../src/review.js')
@@ -85,27 +118,7 @@ describe('fresh collection', () => {
 
 describe('AI failure resilience', () => {
   it('returns raw review when AI summary throws', async () => {
-    const { mockClose } = vi.hoisted(() => ({
-      mockClose: vi.fn()
-    }))
-
-    vi.mock('../src/config.js', () => ({
-      loadConfig: () => ({
-        linear: { apiKey: 'test' },
-        github: { token: 'test' },
-        slack: { token: 'test' },
-        user: { linear: 'me', github: 'me', slack: 'me' },
-        ai: { provider: 'openai', apiKey: 'test', model: 'gpt-4o-mini' },
-        db: { path: ':memory:' }
-      }),
-      getConfigDir: () => '/tmp'
-    }))
-
-    vi.mock('../src/db.js', () => ({
-      getDb: () => ({ close: mockClose, pragma: vi.fn(), exec: vi.fn() }),
-      insertCollections: vi.fn(),
-      insertReview: vi.fn()
-    }))
+    mockRenderReview.mockReturnValue('# Raw Review\n\nNo AI today')
 
     vi.mock('../src/collectors/linear.js', () => ({
       LinearCollector: vi.fn().mockImplementation(() => ({
@@ -122,30 +135,8 @@ describe('AI failure resilience', () => {
     vi.mock('../src/collectors/slack.js', () => ({
       SlackCollector: vi.fn().mockImplementation(() => ({
         name: 'slack',
-        collect: vi.fn().mockResolvedValue([{
-          id: 'sl-test',
-          source: 'slack',
-          type: 'slack_message',
-          title: 'test message',
-          url: null,
-          status: null,
-          timestamp: new Date('2026-07-27T10:00:00Z'),
-          description: null,
-          metadata: null
-        }])
+        collect: vi.fn().mockResolvedValue([])
       }))
-    }))
-
-    vi.mock('../src/summarizer.js', () => ({
-      generateSummary: vi.fn().mockRejectedValue(new Error('API quota exceeded'))
-    }))
-
-    vi.mock('../src/aggregator.js', () => ({
-      aggregate: vi.fn((items) => items)
-    }))
-
-    vi.mock('../src/renderer.js', () => ({
-      renderReview: vi.fn(() => '# Raw Review\n\nNo AI today')
     }))
 
     const { generateReview } = await import('../src/review.js')
@@ -154,6 +145,51 @@ describe('AI failure resilience', () => {
 
     expect(result).toContain('# Raw Review')
     expect(result).not.toContain('## AI Summary')
-    expect(mockClose).toHaveBeenCalled()
+    expect(mockDbClose).toHaveBeenCalled()
+  })
+})
+
+describe('cross-reference integration', () => {
+  it('computes cross-references and passes them to renderer', async () => {
+    mockRenderReview.mockReturnValue('# Review')
+
+    vi.mock('../src/collectors/linear.js', () => ({
+      LinearCollector: vi.fn(() => ({
+        name: 'linear',
+        collect: vi.fn().mockResolvedValue([{
+          id: 'linear-1', source: 'linear', type: 'task',
+          title: 'Test', url: null, status: 'Done',
+          timestamp: new Date('2026-07-29'), description: null,
+          metadata: { identifier: 'ENG-1' }
+        }])
+      }))
+    }))
+
+    vi.mock('../src/collectors/github.js', () => ({
+      GitHubCollector: vi.fn(() => ({
+        name: 'github',
+        collect: vi.fn().mockResolvedValue([{
+          id: 'gh-1', source: 'github', type: 'pr_created',
+          title: 'ENG-1 fix', url: null, status: 'open',
+          timestamp: new Date('2026-07-29'), description: null,
+          metadata: { repo: 'org/repo' }
+        }])
+      }))
+    }))
+
+    vi.mock('../src/collectors/slack.js', () => ({
+      SlackCollector: vi.fn(() => ({
+        name: 'slack',
+        collect: vi.fn().mockResolvedValue([])
+      }))
+    }))
+
+    const { generateReview } = await import('../src/review.js')
+    await generateReview('daily', false)
+
+    const crossRefsArg = mockRenderReview.mock.calls[0][5]
+    expect(crossRefsArg).toBeDefined()
+    expect(crossRefsArg).toHaveLength(1)
+    expect(crossRefsArg[0].relationType).toBe('implements')
   })
 })

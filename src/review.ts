@@ -9,6 +9,7 @@ import { SlackCollector } from './collectors/slack.js'
 import { aggregate } from './aggregator.js'
 import { generateSummary } from './summarizer.js'
 import { renderReview } from './renderer.js'
+import { crossReference } from './crossref.js'
 import { join } from 'path'
 
 export function parseDateInput(input: string, defaultTime: 'start' | 'end'): Date {
@@ -93,6 +94,7 @@ export async function generateReview(period: string, useAi: boolean, fromDate?: 
   ]
 
   const { items, warnings } = await collectFresh(collectors, range, config)
+  const crossRefs = crossReference(items)
 
   // Store in DB for historical queries
   const rows = items.map(item => ({
@@ -121,7 +123,7 @@ export async function generateReview(period: string, useAi: boolean, fromDate?: 
   }
 
   try {
-    const markdown = renderReview(items, period, dateLabel, aiSummary, warnings)
+    const markdown = renderReview(items, period, dateLabel, aiSummary, warnings, crossRefs)
 
     insertReview(db, {
       period,
