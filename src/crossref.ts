@@ -1,6 +1,6 @@
 import type { CollectedItem, CrossRef } from './types.js'
 
-const LINEAR_ID_RE = /[A-Za-z]{2,4}-\d+/g
+const LINEAR_ID_RE = /[A-Z]{2,4}-\d+/gi
 
 export function crossReference(items: CollectedItem[]): CrossRef[] {
   const linearItems = items.filter(i => i.source === 'linear')
