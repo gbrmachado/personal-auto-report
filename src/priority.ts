@@ -26,7 +26,11 @@ export class PriorityEngine {
       filter: { assignee: { id: { eq: me.id } } },
       first: 50
     })
-    return issues.nodes
+    const resolved = await Promise.all(issues.nodes.map(async i => {
+      const state = await i.state
+      return { ...i, state }
+    }))
+    return resolved
       .filter(i => i.state && statuses.includes(i.state.name))
       .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
       .map(i => ({
