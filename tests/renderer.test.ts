@@ -55,7 +55,6 @@ describe('renderer', () => {
 
   it('renders task narratives when aiSummary is present', async () => {
     const { renderReview } = await import('../src/renderer.js')
-    const now = new Date('2026-07-29T12:00:00Z')
     const crossRefs = [
       {
         sourceItemId: 'slack-c1',

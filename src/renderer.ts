@@ -41,7 +41,7 @@ export function renderReview(
         lines.push('')
 
         // Task created event
-        const createdLabel = new Date(li.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        const createdLabel = li.timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         lines.push(`- **${createdLabel}** — 🎯 Task created`)
 
         // Gather related source items sorted by timestamp
@@ -64,7 +64,7 @@ export function renderReview(
 
         // Status event
         const statusLabel = li.status ?? 'completed'
-        lines.push(`- **${createdLabel}** — ✅ ${statusLabel}`)
+        lines.push(`- ✅ ${statusLabel}`)
         lines.push('')
       }
     }
