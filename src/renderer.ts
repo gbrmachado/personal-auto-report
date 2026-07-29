@@ -101,6 +101,17 @@ export function renderReview(
     lines.push('')
   }
 
+  if (byType.pr_assigned?.length) {
+    lines.push('## Pull Requests — Assigned')
+    lines.push('| Title | Repo | Status | Link |')
+    lines.push('|-------|------|--------|------|')
+    for (const item of byType.pr_assigned) {
+      const repo = (item.metadata?.repo as string) ?? '-'
+      lines.push(`| ${item.title} | ${repo} | ${item.status ?? '-'} | ${item.url ?? '-'} |`)
+    }
+    lines.push('')
+  }
+
   if (byType.pr_reviewed?.length) {
     lines.push('## Pull Requests — Reviewed')
     lines.push('| Title | Repo | Status | Link |')
