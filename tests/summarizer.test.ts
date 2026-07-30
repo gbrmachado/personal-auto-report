@@ -73,6 +73,14 @@ describe('summarizer', () => {
     expect(result).toBe('Mock summary content')
   })
 
+  it('prompt includes thematic grouping instruction', async () => {
+    const { buildPrompt } = await import('../src/summarizer.js')
+    const items: CollectedItem[] = [{ id: '1', source: 'linear', type: 'task', title: 'Fix bug', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }]
+    const prompt = buildPrompt(items, 'daily')
+    expect(prompt).toContain('thematic')
+    expect(prompt).toContain('group')
+  })
+
   it('uses custom prompt template from config when provided', () => {
     const items: CollectedItem[] = [
       { id: '1', source: 'linear', type: 'task', title: 'Deploy fix', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }
