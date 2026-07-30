@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
+import type { Config } from '../src/config.js'
 import { writeFileSync, rmSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -50,5 +51,19 @@ describe('config', () => {
     expect(parseAiProvider('')).toBe('openai')
     expect(parseAiProvider('DEEPSEEK')).toBe('deepseek')
     expect(() => parseAiProvider('anthropic')).toThrow('Unsupported AI provider')
+  })
+
+  it('parses config with github filter and display groupBy', () => {
+    const config: Config = {
+      linear: { apiKey: 'k' },
+      github: { token: 't', filter: { includeRepos: ['org/*'], excludeRepos: ['org/legacy'] } },
+      slack: { token: 't' },
+      user: { linear: 'a', github: 'b', slack: 'c' },
+      ai: { provider: 'openai', apiKey: 'k', model: 'gpt-4o-mini' },
+      db: { path: ':memory:' },
+      display: { groupBy: 'project' }
+    }
+    expect(config.github.filter?.includeRepos).toEqual(['org/*'])
+    expect(config.display?.groupBy).toBe('project')
   })
 })
