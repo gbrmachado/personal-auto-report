@@ -107,6 +107,16 @@ describe('GitHubCollector', () => {
     }
   })
 
+  it('repoMatches handles edge cases', async () => {
+    const { repoMatches } = await import('../../src/collectors/github.js')
+    expect(repoMatches('org/repo', 'org/repo')).toBe(true)
+    expect(repoMatches('org/repo', 'other/repo')).toBe(false)
+    expect(repoMatches('a/b', 'a/*')).toBe(true)
+    expect(repoMatches('x/y', 'a/*')).toBe(false)
+    expect(repoMatches('', '')).toBe(true)
+    expect(repoMatches('Org/Repo', 'org/repo')).toBe(false)
+  })
+
   it('fetches actual review timestamps for reviewed PRs', async () => {
     const collector = new GitHubCollector()
     const date = '2026-07-27'

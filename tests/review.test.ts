@@ -176,6 +176,7 @@ describe('cross-reference integration', () => {
     const crossRefsArg = args[5] as Array<{ relationType: string }>
     expect(crossRefsArg).toHaveLength(1)
     expect(crossRefsArg[0].relationType).toBe('implements')
+    expect(args[6]).toBe('none')
   })
 
   it('includes slack cross-references in integration', async () => {

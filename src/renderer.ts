@@ -8,7 +8,7 @@ export function renderReview(
   aiSummary?: string,
   warnings?: string[],
   crossRefs: CrossRef[] = [],
-  groupBy: string = 'none'
+  groupBy: 'project' | 'team' | 'none' = 'none'
 ): string {
   const lines: string[] = []
   const heading = period === 'daily' ? 'Daily' : period === 'weekly' ? 'Weekly' : 'Monthly'
@@ -80,7 +80,7 @@ export function renderReview(
     if (groupBy !== 'none') {
       const groups = new Map<string, CollectedItem[]>()
       for (const item of byType.task) {
-        const key = String(item.metadata?.[groupBy as keyof typeof item.metadata] ?? 'Other')
+        const key = String(item.metadata?.[groupBy] ?? 'Other')
         if (!groups.has(key)) groups.set(key, [])
         groups.get(key)!.push(item)
       }

@@ -62,6 +62,8 @@ export class GitHubCollector implements Collector {
     })
     for (const pr of reviewedData.items) {
       const repoInfo = parseRepo(pr.repository_url)
+      if (!filter(repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null)) continue
+
       const prNumber = (pr as { number?: number }).number
 
       let reviewTimestamp = new Date(pr.updated_at)
@@ -90,7 +92,6 @@ export class GitHubCollector implements Collector {
         }
       }
 
-      if (!filter(repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null)) continue
       items.push({
         id: `gh-reviewed-${pr.id}`,
         source: 'github',
