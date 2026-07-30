@@ -32,16 +32,20 @@ describe('config', () => {
     const { saveConfig, loadConfig } = await import('../src/config.js')
     const config = {
       linear: { apiKey: 'lin-key' },
-      github: { token: 'gh-token' },
+      github: { token: 'gh-token', filter: { includeRepos: ['org/*'], excludeRepos: ['org/legacy'] } },
       slack: { token: 'sl-token' },
       user: { linear: 'user', github: 'user', slack: 'user' },
       ai: { provider: 'openai' as const, apiKey: 'ai-key', model: 'gpt-4' },
-      db: { path: '/tmp/test.db' }
+      db: { path: '/tmp/test.db' },
+      display: { groupBy: 'team' as const }
     }
     saveConfig(config)
     const loaded = loadConfig()
     expect(loaded.linear.apiKey).toBe('lin-key')
     expect(loaded.github.token).toBe('gh-token')
+    expect(loaded.github.filter?.includeRepos).toEqual(['org/*'])
+    expect(loaded.github.filter?.excludeRepos).toEqual(['org/legacy'])
+    expect(loaded.display?.groupBy).toBe('team')
     expect(loaded.ai.provider).toBe('openai')
   })
 

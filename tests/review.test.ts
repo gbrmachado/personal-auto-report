@@ -180,6 +180,20 @@ describe('cross-reference integration', () => {
     expect(args[6]).toBe('none')
   })
 
+  it('uses none groupBy when display config is absent', async () => {
+    mockRenderReview.mockClear()
+    mockRenderReview.mockReturnValue('# Review')
+    mockLinearCollect.mockResolvedValue([])
+    mockGithubCollect.mockResolvedValue([])
+    mockSlackCollect.mockResolvedValue([])
+
+    const { generateReview } = await import('../src/review.js')
+    await generateReview('daily', false)
+
+    const args = mockRenderReview.mock.calls[0] as unknown as unknown[]
+    expect(args[6]).toBe('none')
+  })
+
   it('passes groupBy from config to renderReview', async () => {
     mockRenderReview.mockClear()
     mockRenderReview.mockReturnValue('# Review')

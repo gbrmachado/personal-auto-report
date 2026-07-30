@@ -92,7 +92,7 @@ export function renderReview(
       const groups = new Map<string, CollectedItem[]>()
       for (const item of byType.task) {
         const val = item.metadata?.[groupBy]
-        const key = val != null ? String(val) : 'Other'
+        const key = val != null && val !== '' ? String(val) : 'Other'
         if (!groups.has(key)) groups.set(key, [])
         groups.get(key)!.push(item)
       }

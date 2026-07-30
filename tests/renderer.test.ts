@@ -195,6 +195,36 @@ describe('renderer', () => {
     expect(md).toContain('- Slack collector failed: Invalid token')
   })
 
+  it('defaults to flat table when groupBy is omitted', () => {
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30')
+    expect(result).not.toContain('###')
+    expect(result).toContain('| Title | Status | Related | Link |')
+  })
+
+  it('shows cross-refs in grouped view', () => {
+    const crossRefs: CrossRef[] = [
+      { sourceItemId: 's1', targetItemId: 'l1', relationType: 'mentioned_in', context: '' },
+    ]
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], crossRefs, 'team')
+    expect(result).toContain('💬 slack')
+  })
+
+  it('treats empty team string as Other in grouped view', () => {
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: '' } },
+      { id: 'l2', source: 'linear', type: 'task', title: 'Task 2', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'team')
+    expect(result).toContain('### Other')
+    expect(result).toContain('### Eng')
+  })
+
   it('groups tasks by team when groupBy is team', async () => {
     const items: CollectedItem[] = [
       { id: 'l1', source: 'linear', type: 'task', title: 'Fix A', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng', identifier: 'ENG-1' } },
