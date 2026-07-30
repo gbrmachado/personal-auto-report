@@ -194,4 +194,96 @@ describe('renderer', () => {
     expect(md).toContain('- Linear collector failed: API timeout')
     expect(md).toContain('- Slack collector failed: Invalid token')
   })
+
+  it('defaults to flat table when groupBy is omitted', () => {
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30')
+    expect(result).not.toContain('###')
+    expect(result).toContain('| Title | Status | Related | Link |')
+  })
+
+  it('shows cross-refs in grouped view', () => {
+    const crossRefs: CrossRef[] = [
+      { sourceItemId: 's1', targetItemId: 'l1', relationType: 'mentioned_in', context: '' },
+    ]
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], crossRefs, 'team')
+    expect(result).toContain('💬 slack')
+  })
+
+  it('treats empty team string as Other in grouped view', () => {
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: '' } },
+      { id: 'l2', source: 'linear', type: 'task', title: 'Task 2', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'team')
+    expect(result).toContain('### Other')
+    expect(result).toContain('### Eng')
+  })
+
+  it('groups tasks by team when groupBy is team', async () => {
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Fix A', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng', identifier: 'ENG-1' } },
+      { id: 'l2', source: 'linear', type: 'task', title: 'Fix B', url: null, status: 'Todo', timestamp: new Date(), description: null, metadata: { team: 'Eng', identifier: 'ENG-2' } },
+      { id: 'l3', source: 'linear', type: 'task', title: 'Design C', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Design', identifier: 'DSG-1' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'team')
+    expect(result).toContain('### Eng')
+    expect(result).toContain('### Design')
+    expect(result).toContain('Fix A')
+    expect(result).toContain('Design C')
+  })
+
+  it('groups tasks by project when groupBy is project', () => {
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Feature X', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { project: 'Checkout', team: 'Eng' } },
+      { id: 'l2', source: 'linear', type: 'task', title: 'Feature Y', url: null, status: 'Todo', timestamp: new Date(), description: null, metadata: { project: 'Giveaway', team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'project')
+    expect(result).toContain('### Checkout')
+    expect(result).toContain('### Giveaway')
+    expect(result).toContain('Feature X')
+    expect(result).toContain('Feature Y')
+  })
+
+  it('falls back to Other when metadata exists but lacks groupBy key', () => {
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task 1', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'project')
+    expect(result).toContain('### Other')
+    expect(result).toContain('Task 1')
+  })
+
+  it('skips Linear Tasks section when no tasks exist with groupBy set', () => {
+    const result = renderReview([], 'daily', '2026-07-30', undefined, [], [], 'team')
+    expect(result).not.toContain('## Linear Tasks')
+  })
+
+  it('falls back to Other group when metadata is null', () => {
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task 1', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null },
+      { id: 'l2', source: 'linear', type: 'task', title: 'Task 2', url: null, status: 'Todo', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'team')
+    expect(result).toContain('### Other')
+    expect(result).toContain('### Eng')
+    expect(result).toContain('Task 1')
+    expect(result).toContain('Task 2')
+  })
+
+  it('falls back to flat table when groupBy is none', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task A', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
+    expect(result).not.toContain('### Eng')
+    expect(result).toContain('## Linear Tasks')
+    expect(result).toContain('| Title | Status | Related | Link |')
+  })
 })

@@ -123,7 +123,8 @@ export async function generateReview(period: string, useAi: boolean, fromDate?: 
   }
 
   try {
-    const markdown = renderReview(items, period, dateLabel, aiSummary, warnings, crossRefs)
+    const groupBy = config.display?.groupBy ?? 'none'
+    const markdown = renderReview(items, period, dateLabel, aiSummary, warnings, crossRefs, groupBy)
 
     insertReview(db, {
       period,

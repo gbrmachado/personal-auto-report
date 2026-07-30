@@ -7,10 +7,22 @@ export function renderReview(
   dateLabel: string,
   aiSummary?: string,
   warnings?: string[],
-  crossRefs: CrossRef[] = []
+  crossRefs: CrossRef[] = [],
+  groupBy: 'project' | 'team' | 'none' = 'none'
 ): string {
   const lines: string[] = []
   const heading = period === 'daily' ? 'Daily' : period === 'weekly' ? 'Weekly' : 'Monthly'
+
+  const formatRelated = (item: CollectedItem) => {
+    return crossRefs
+      .filter(cr => cr.targetItemId === item.id)
+      .map(cr => {
+        if (cr.relationType === 'mentioned_in') return '💬 slack'
+        if (cr.relationType === 'implements') return '🔀 pr'
+        return cr.relationType
+      })
+      .join(', ') || '-'
+  }
 
   lines.push(`# ${heading} Review — ${dateLabel}`)
   lines.push('')
@@ -74,20 +86,34 @@ export function renderReview(
 
   if (byType.task?.length) {
     lines.push('## Linear Tasks')
-    lines.push('| Title | Status | Related | Link |')
-    lines.push('|-------|--------|---------|------|')
-    for (const item of byType.task) {
-      const related = crossRefs
-        .filter(cr => cr.targetItemId === item.id)
-        .map(cr => {
-          if (cr.relationType === 'mentioned_in') return '💬 slack'
-          if (cr.relationType === 'implements') return '🔀 pr'
-          return cr.relationType
-        })
-        .join(', ') || '-'
-      lines.push(`| ${item.title} | ${item.status ?? '-'} | ${related} | ${item.url ?? '-'} |`)
-    }
     lines.push('')
+
+    if (groupBy !== 'none') {
+      const groups = new Map<string, CollectedItem[]>()
+      for (const item of byType.task) {
+        const val = item.metadata?.[groupBy]
+        const key = val != null && val !== '' ? String(val) : 'Other'
+        if (!groups.has(key)) groups.set(key, [])
+        groups.get(key)!.push(item)
+      }
+      const sorted = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+      for (const [groupName, groupItems] of sorted) {
+        lines.push(`### ${groupName}`)
+        lines.push('| Title | Status | Related | Link |')
+        lines.push('|-------|--------|---------|------|')
+        for (const item of groupItems) {
+          lines.push(`| ${item.title} | ${item.status ?? '-'} | ${formatRelated(item)} | ${item.url ?? '-'} |`)
+        }
+        lines.push('')
+      }
+    } else {
+      lines.push('| Title | Status | Related | Link |')
+      lines.push('|-------|--------|---------|------|')
+      for (const item of byType.task) {
+        lines.push(`| ${item.title} | ${item.status ?? '-'} | ${formatRelated(item)} | ${item.url ?? '-'} |`)
+      }
+      lines.push('')
+    }
   }
 
   if (byType.pr_created?.length) {

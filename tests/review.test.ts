@@ -2,25 +2,26 @@ import { describe, it, expect, vi } from 'vitest'
 import type { Collector } from '../src/collector.js'
 import type { Config } from '../src/config.js'
 
-const { mockRenderReview, mockDbClose, mockLinearCollect, mockGithubCollect, mockSlackCollect } = vi.hoisted(() => ({
+const { mockRenderReview, mockDbClose, mockLinearCollect, mockGithubCollect, mockSlackCollect, mockLoadConfig } = vi.hoisted(() => ({
   mockRenderReview: vi.fn(() => '# Review'),
   mockDbClose: vi.fn(),
   mockLinearCollect: vi.fn(),
   mockGithubCollect: vi.fn(),
-  mockSlackCollect: vi.fn()
-}))
-
-vi.mock('../src/renderer.js', () => ({ renderReview: mockRenderReview }))
-
-vi.mock('../src/config.js', () => ({
-  loadConfig: () => ({
+  mockSlackCollect: vi.fn(),
+  mockLoadConfig: vi.fn(() => ({
     linear: { apiKey: 'test' },
     github: { token: 'test' },
     slack: { token: 'test' },
     user: { linear: 'me', github: 'me', slack: 'me' },
     ai: { provider: 'openai', apiKey: 'test', model: 'gpt-4o-mini' },
     db: { path: ':memory:' }
-  }),
+  }))
+}))
+
+vi.mock('../src/renderer.js', () => ({ renderReview: mockRenderReview }))
+
+vi.mock('../src/config.js', () => ({
+  loadConfig: mockLoadConfig,
   getConfigDir: () => '/tmp'
 }))
 
@@ -172,10 +173,49 @@ describe('cross-reference integration', () => {
     const calls = mockRenderReview.mock.calls
     expect(calls.length).toBeGreaterThan(0)
     const args = calls[0] as unknown as unknown[]
-    expect(args.length).toBeGreaterThanOrEqual(6)
+    expect(args.length).toBe(7)
     const crossRefsArg = args[5] as Array<{ relationType: string }>
     expect(crossRefsArg).toHaveLength(1)
     expect(crossRefsArg[0].relationType).toBe('implements')
+    expect(args[6]).toBe('none')
+  })
+
+  it('uses none groupBy when display config is absent', async () => {
+    mockRenderReview.mockClear()
+    mockRenderReview.mockReturnValue('# Review')
+    mockLinearCollect.mockResolvedValue([])
+    mockGithubCollect.mockResolvedValue([])
+    mockSlackCollect.mockResolvedValue([])
+
+    const { generateReview } = await import('../src/review.js')
+    await generateReview('daily', false)
+
+    const args = mockRenderReview.mock.calls[0] as unknown as unknown[]
+    expect(args[6]).toBe('none')
+  })
+
+  it('passes groupBy from config to renderReview', async () => {
+    mockRenderReview.mockClear()
+    mockRenderReview.mockReturnValue('# Review')
+    mockLinearCollect.mockResolvedValue([])
+    mockGithubCollect.mockResolvedValue([])
+    mockSlackCollect.mockResolvedValue([])
+
+    mockLoadConfig.mockReturnValueOnce({
+      linear: { apiKey: 'test' },
+      github: { token: 'test' },
+      slack: { token: 'test' },
+      user: { linear: 'me', github: 'me', slack: 'me' },
+      ai: { provider: 'openai', apiKey: 'test', model: 'gpt-4o-mini' },
+      db: { path: ':memory:' },
+      display: { groupBy: 'team' as const }
+    } as Config)
+
+    const { generateReview } = await import('../src/review.js')
+    await generateReview('daily', false)
+
+    const args = mockRenderReview.mock.calls[0] as unknown as unknown[]
+    expect(args[6]).toBe('team')
   })
 
   it('includes slack cross-references in integration', async () => {
@@ -201,7 +241,7 @@ describe('cross-reference integration', () => {
     const calls = mockRenderReview.mock.calls
     expect(calls.length).toBeGreaterThan(0)
     const args = calls[0] as unknown as unknown[]
-    expect(args.length).toBeGreaterThanOrEqual(6)
+    expect(args.length).toBe(7)
     const crossRefsArg = args[5] as Array<{ relationType: string }>
     expect(crossRefsArg).toHaveLength(1)
     expect(crossRefsArg[0].relationType).toBe('mentioned_in')

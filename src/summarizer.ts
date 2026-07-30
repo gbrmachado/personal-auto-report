@@ -17,9 +17,10 @@ Focus on:
 - What was accomplished
 - Decisions made
 - Action items / follow-ups
-- Notable patterns or trends
+- Group related items by theme or project area
 
-Keep it concise (2-4 paragraphs). Do not use bullet points.
+Keep it concise (2-4 paragraphs). Group related tasks and PRs thematically
+rather than listing chronologically. Do not use bullet points.
 
 Activity:
 ${sections}`

@@ -3,11 +3,29 @@ import type { Collector } from '../collector.js'
 import type { CollectedItem, DateRange } from '../types.js'
 import type { Config } from '../config.js'
 
+export function repoMatches(repo: string, pattern: string): boolean {
+  if (pattern.endsWith('/*')) {
+    return repo.startsWith(pattern.slice(0, -1))
+  }
+  return repo === pattern
+}
+
 function parseRepo(repositoryUrl?: string): { owner: string; repo: string } | null {
   if (!repositoryUrl) return null
   const parts = repositoryUrl.replace('https://api.github.com/repos/', '').split('/')
   if (parts.length < 2) return null
   return { owner: parts[0], repo: parts[1]?.replace(/\?.+$/, '') ?? '' }
+}
+
+function repoFilter(config: Config): (repo: string | null) => boolean {
+  const include = config.github.filter?.includeRepos
+  const exclude = config.github.filter?.excludeRepos
+  return (repo: string | null) => {
+    if (!repo) return true
+    if (include && !include.some(p => repoMatches(repo, p))) return false
+    if (exclude && exclude.some(p => repoMatches(repo, p))) return false
+    return true
+  }
 }
 
 export class GitHubCollector implements Collector {
@@ -17,6 +35,7 @@ export class GitHubCollector implements Collector {
     const octokit = new Octokit({ auth: config.github.token })
     const username = config.user.github
     const dateStr = range.start.toISOString().split('T')[0]
+    const filter = repoFilter(config)
     const items: CollectedItem[] = []
 
     const { data: createdData } = await octokit.request('GET /search/issues', {
@@ -24,6 +43,7 @@ export class GitHubCollector implements Collector {
     })
     for (const pr of createdData.items) {
       const repoInfo = parseRepo(pr.repository_url)
+      if (!filter(repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null)) continue
       items.push({
         id: `gh-created-${pr.id}`,
         source: 'github',
@@ -42,6 +62,8 @@ export class GitHubCollector implements Collector {
     })
     for (const pr of reviewedData.items) {
       const repoInfo = parseRepo(pr.repository_url)
+      if (!filter(repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null)) continue
+
       const prNumber = (pr as { number?: number }).number
 
       let reviewTimestamp = new Date(pr.updated_at)
@@ -90,6 +112,7 @@ export class GitHubCollector implements Collector {
     for (const pr of assignedData.items) {
       if (!existingIds.has(String(pr.id))) {
         const repoInfo = parseRepo(pr.repository_url)
+        if (!filter(repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null)) continue
         items.push({
           id: `gh-assigned-${pr.id}`,
           source: 'github',

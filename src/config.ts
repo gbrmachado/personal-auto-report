@@ -12,7 +12,7 @@ export function parseAiProvider(input: string): AiProvider {
 
 export interface Config {
   linear: { apiKey: string }
-  github: { token: string }
+  github: { token: string; filter?: GitHubFilterConfig }
   slack: { token: string }
   user: {
     linear: string
@@ -30,6 +30,16 @@ export interface Config {
     path: string
   }
   priorities?: PrioritiesConfig
+  display?: DisplayConfig
+}
+
+export interface GitHubFilterConfig {
+  includeRepos?: string[]
+  excludeRepos?: string[]
+}
+
+export interface DisplayConfig {
+  groupBy?: 'project' | 'team' | 'none'
 }
 
 export interface GitHubPriorityConfig {

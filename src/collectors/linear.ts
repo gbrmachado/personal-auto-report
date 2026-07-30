@@ -16,7 +16,7 @@ export class LinearCollector implements Collector {
       }
     })
     return Promise.all(issues.nodes.map(async issue => {
-      const [state, team] = await Promise.all([issue.state, issue.team])
+      const [state, team, project] = await Promise.all([issue.state, issue.team, issue.project])
       return {
         id: `linear-${issue.id}`,
         source: 'linear' as const,
@@ -29,6 +29,7 @@ export class LinearCollector implements Collector {
         metadata: {
           priority: issue.priority,
           team: team?.name ?? null,
+          project: project?.name ?? null,
           identifier: issue.identifier
         }
       }
