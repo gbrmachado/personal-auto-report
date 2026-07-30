@@ -14,6 +14,7 @@ vi.mock('@linear/sdk', () => ({
           state: { name: 'In Progress' },
           priority: 2,
           team: { name: 'Engineering' },
+          project: Promise.resolve({ name: 'Checkout' }),
           identifier: 'TEST-1'
         }
       ]
@@ -33,5 +34,6 @@ describe('LinearCollector', () => {
     expect(items).toHaveLength(1)
     expect(items[0].title).toBe('Test issue')
     expect(items[0].source).toBe('linear')
+    expect(items[0].metadata?.project).toBe('Checkout')
   })
 })
