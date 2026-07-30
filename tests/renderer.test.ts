@@ -194,4 +194,29 @@ describe('renderer', () => {
     expect(md).toContain('- Linear collector failed: API timeout')
     expect(md).toContain('- Slack collector failed: Invalid token')
   })
+
+  it('groups tasks by team when groupBy is team', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Fix A', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng', identifier: 'ENG-1' } },
+      { id: 'l2', source: 'linear', type: 'task', title: 'Fix B', url: null, status: 'Todo', timestamp: new Date(), description: null, metadata: { team: 'Eng', identifier: 'ENG-2' } },
+      { id: 'l3', source: 'linear', type: 'task', title: 'Design C', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Design', identifier: 'DSG-1' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'team')
+    expect(result).toContain('### Eng')
+    expect(result).toContain('### Design')
+    expect(result).toContain('Fix A')
+    expect(result).toContain('Design C')
+  })
+
+  it('falls back to flat table when groupBy is none', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task A', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { team: 'Eng' } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
+    expect(result).not.toContain('### Eng')
+    expect(result).toContain('## Linear Tasks')
+    expect(result).toContain('| Title | Status | Related | Link |')
+  })
 })
