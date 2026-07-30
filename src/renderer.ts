@@ -13,6 +13,17 @@ export function renderReview(
   const lines: string[] = []
   const heading = period === 'daily' ? 'Daily' : period === 'weekly' ? 'Weekly' : 'Monthly'
 
+  const formatRelated = (item: CollectedItem) => {
+    return crossRefs
+      .filter(cr => cr.targetItemId === item.id)
+      .map(cr => {
+        if (cr.relationType === 'mentioned_in') return '💬 slack'
+        if (cr.relationType === 'implements') return '🔀 pr'
+        return cr.relationType
+      })
+      .join(', ') || '-'
+  }
+
   lines.push(`# ${heading} Review — ${dateLabel}`)
   lines.push('')
 
@@ -80,24 +91,18 @@ export function renderReview(
     if (groupBy !== 'none') {
       const groups = new Map<string, CollectedItem[]>()
       for (const item of byType.task) {
-        const key = String(item.metadata?.[groupBy] ?? 'Other')
+        const val = item.metadata?.[groupBy]
+        const key = val != null ? String(val) : 'Other'
         if (!groups.has(key)) groups.set(key, [])
         groups.get(key)!.push(item)
       }
-      for (const [groupName, groupItems] of groups) {
+      const sorted = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+      for (const [groupName, groupItems] of sorted) {
         lines.push(`### ${groupName}`)
         lines.push('| Title | Status | Related | Link |')
         lines.push('|-------|--------|---------|------|')
         for (const item of groupItems) {
-          const related = crossRefs
-            .filter(cr => cr.targetItemId === item.id)
-            .map(cr => {
-              if (cr.relationType === 'mentioned_in') return '💬 slack'
-              if (cr.relationType === 'implements') return '🔀 pr'
-              return cr.relationType
-            })
-            .join(', ') || '-'
-          lines.push(`| ${item.title} | ${item.status ?? '-'} | ${related} | ${item.url ?? '-'} |`)
+          lines.push(`| ${item.title} | ${item.status ?? '-'} | ${formatRelated(item)} | ${item.url ?? '-'} |`)
         }
         lines.push('')
       }
@@ -105,15 +110,7 @@ export function renderReview(
       lines.push('| Title | Status | Related | Link |')
       lines.push('|-------|--------|---------|------|')
       for (const item of byType.task) {
-        const related = crossRefs
-          .filter(cr => cr.targetItemId === item.id)
-          .map(cr => {
-            if (cr.relationType === 'mentioned_in') return '💬 slack'
-            if (cr.relationType === 'implements') return '🔀 pr'
-            return cr.relationType
-          })
-          .join(', ') || '-'
-        lines.push(`| ${item.title} | ${item.status ?? '-'} | ${related} | ${item.url ?? '-'} |`)
+        lines.push(`| ${item.title} | ${item.status ?? '-'} | ${formatRelated(item)} | ${item.url ?? '-'} |`)
       }
       lines.push('')
     }
