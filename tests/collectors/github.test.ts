@@ -39,6 +39,21 @@ vi.mock('octokit', () => ({
 
 import { GitHubCollector } from '../../src/collectors/github.js'
 
+describe('repoMatches', () => {
+  it('matches exact repo name', async () => {
+    const { repoMatches } = await import('../../src/collectors/github.js')
+    expect(repoMatches('org/repo', 'org/repo')).toBe(true)
+    expect(repoMatches('org/repo', 'other/repo')).toBe(false)
+  })
+
+  it('matches org glob pattern', async () => {
+    const { repoMatches } = await import('../../src/collectors/github.js')
+    expect(repoMatches('courtyard/checkout', 'courtyard/*')).toBe(true)
+    expect(repoMatches('courtyard/api', 'courtyard/*')).toBe(true)
+    expect(repoMatches('other/project', 'courtyard/*')).toBe(false)
+  })
+})
+
 describe('GitHubCollector', () => {
   it('uses created date for authored PRs', async () => {
     const collector = new GitHubCollector()
@@ -53,6 +68,43 @@ describe('GitHubCollector', () => {
     expect(mockRequest).toHaveBeenCalledWith('GET /search/issues', expect.objectContaining({
       q: expect.stringContaining('created:')
     }))
+  })
+
+  it('filters by includeRepos', async () => {
+    const original = mockRequest.getMockImplementation()
+    try {
+      mockRequest.mockImplementation((route, { q } = {}) => {
+        if (q?.includes('author:')) {
+          return {
+            data: {
+              items: [
+                { id: 10, title: 'PR in foo/bar', html_url: 'https://github.com/foo/bar/pull/10', state: 'open',
+                  created_at: '2026-07-27T10:00:00Z', body: 'desc', number: 10,
+                  repository_url: 'https://api.github.com/repos/foo/bar' },
+                { id: 11, title: 'PR in other/proj', html_url: 'https://github.com/other/proj/pull/11', state: 'open',
+                  created_at: '2026-07-27T10:00:00Z', body: 'desc', number: 11,
+                  repository_url: 'https://api.github.com/repos/other/proj' },
+              ]
+            }
+          }
+        }
+        return { data: { items: [] } }
+      })
+
+      const collector = new GitHubCollector()
+      const date = '2026-07-27'
+      const items = await collector.collect(
+        { start: new Date(date), end: new Date(date) },
+        { github: { token: 'test', filter: { includeRepos: ['foo/bar'] } }, user: { github: 'testuser' } }
+      )
+
+      expect(items).toHaveLength(1)
+      expect(items[0].title).toBe('PR in foo/bar')
+      expect(items[0].metadata?.repo).toBe('foo/bar')
+    } finally {
+      if (original) mockRequest.mockImplementation(original)
+      else mockRequest.mockReset()
+    }
   })
 
   it('fetches actual review timestamps for reviewed PRs', async () => {
