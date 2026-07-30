@@ -78,7 +78,7 @@ describe('summarizer', () => {
     const items: CollectedItem[] = [{ id: '1', source: 'linear', type: 'task', title: 'Fix bug', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }]
     const prompt = buildPrompt(items, 'daily')
     expect(prompt).toContain('thematic')
-    expect(prompt).toContain('group')
+    expect(prompt).toContain('Group')
   })
 
   it('uses custom prompt template from config when provided', () => {
