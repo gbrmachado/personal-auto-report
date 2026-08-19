@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildFocusReport } from '../src/focus/engine.js'
-import type { PriorityResult } from '../src/priority.js'
-import type { CollectedItem } from '../src/types.js'
+import type { GitHubPriorityItem, LinearPriorityItem, PriorityResult } from '../src/priority.js'
 
 const NOW = new Date('2026-08-20T12:00:00.000Z')
 
@@ -10,7 +9,7 @@ function item(
   status: string,
   updatedAt: string,
   priority?: number
-): CollectedItem {
+): LinearPriorityItem {
   return {
     id,
     source: 'linear',
@@ -60,13 +59,13 @@ describe('buildFocusReport', () => {
   })
 
   it('separates closure work and requested reviews from primary implementation work', () => {
-    const stalePr = {
+    const stalePr: GitHubPriorityItem = {
       ...item('stale-pr', 'open', '2026-08-01T12:00:00.000Z'),
       source: 'github' as const,
       type: 'pr_created' as const,
       metadata: { updatedAt: '2026-08-17T12:00:00.000Z' }
     }
-    const requestedReview = {
+    const requestedReview: GitHubPriorityItem = {
       ...item('requested-review', 'open', '2026-08-10T12:00:00.000Z'),
       source: 'github' as const,
       type: 'pr_reviewed' as const,
@@ -94,10 +93,10 @@ describe('buildFocusReport', () => {
     const sameTime = '2026-08-18T12:00:00.000Z'
     const linearA = item('linear-a', 'Todo', sameTime, 3)
     const linearB = item('linear-b', 'Todo', sameTime, 3)
-    const staleA = { ...item('pr-a', 'open', sameTime), source: 'github' as const, type: 'pr_created' as const }
-    const staleB = { ...item('pr-b', 'open', sameTime), source: 'github' as const, type: 'pr_created' as const }
-    const reviewA = { ...item('review-a', 'open', sameTime), source: 'github' as const, type: 'pr_reviewed' as const }
-    const reviewB = { ...item('review-b', 'open', sameTime), source: 'github' as const, type: 'pr_reviewed' as const }
+    const staleA: GitHubPriorityItem = { ...item('pr-a', 'open', sameTime), source: 'github', type: 'pr_created' }
+    const staleB: GitHubPriorityItem = { ...item('pr-b', 'open', sameTime), source: 'github', type: 'pr_created' }
+    const reviewA: GitHubPriorityItem = { ...item('review-a', 'open', sameTime), source: 'github', type: 'pr_reviewed' }
+    const reviewB: GitHubPriorityItem = { ...item('review-b', 'open', sameTime), source: 'github', type: 'pr_reviewed' }
 
     const forward = buildFocusReport({
       linear: [linearB, linearA], staleCreated: [staleB, staleA], pendingReview: [reviewB, reviewA]

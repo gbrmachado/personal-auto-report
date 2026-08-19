@@ -1,5 +1,4 @@
-import type { PriorityResult } from '../priority.js'
-import type { CollectedItem } from '../types.js'
+import type { PriorityItem, PriorityResult } from '../priority.js'
 import type { FocusItem, FocusOptions, FocusReasonCode, FocusReport } from './types.js'
 
 const DAY_MS = 86_400_000
@@ -50,12 +49,12 @@ function dateInTimezone(date: Date, timezone: string): string {
   return `${value('year')}-${value('month')}-${value('day')}`
 }
 
-function itemPriority(item: CollectedItem): number | null {
+function itemPriority(item: PriorityItem): number | null {
   const priority = item.metadata?.priority
   return typeof priority === 'number' ? priority : null
 }
 
-function evidenceDate(item: CollectedItem): Date {
+function evidenceDate(item: PriorityItem): Date {
   const updatedAt = item.metadata?.updatedAt
   if (typeof updatedAt === 'string') {
     const parsed = new Date(updatedAt)
@@ -64,11 +63,11 @@ function evidenceDate(item: CollectedItem): Date {
   return item.timestamp
 }
 
-function ageDays(item: CollectedItem, now: Date): number {
+function ageDays(item: PriorityItem, now: Date): number {
   return Math.max(0, Math.floor((now.getTime() - evidenceDate(item).getTime()) / DAY_MS))
 }
 
-function statusRank(item: CollectedItem): number {
+function statusRank(item: PriorityItem): number {
   const priority = itemPriority(item)
   if (priority === 1) return 0
 
@@ -81,7 +80,7 @@ function statusRank(item: CollectedItem): number {
   }
 }
 
-function compareCandidates(a: CollectedItem, b: CollectedItem): number {
+function compareCandidates(a: PriorityItem, b: PriorityItem): number {
   const rank = statusRank(a) - statusRank(b)
   if (rank !== 0) return rank
 
@@ -106,7 +105,7 @@ function suggestedNextAction(reasons: FocusReasonCode[]): string | null {
 }
 
 function toFocusItem(
-  item: CollectedItem,
+  item: PriorityItem,
   now: Date,
   staleAfterDays: number,
   additionalReasons: FocusReasonCode[] = []
@@ -125,8 +124,7 @@ function toFocusItem(
 
   const uniqueReasons = [...new Set(reasons)]
   return {
-    // PriorityResult only ever collects linear/github items, never slack.
-    source: item.source as 'linear' | 'github',
+    source: item.source,
     id: item.id,
     title: item.title,
     url: item.url,

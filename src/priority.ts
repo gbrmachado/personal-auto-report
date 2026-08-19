@@ -4,10 +4,17 @@ import type { Config } from './config.js'
 import { getPrioritiesConfig } from './config.js'
 import type { CollectedItem } from './types.js'
 
+export type LinearPriorityItem = CollectedItem & { source: 'linear'; type: 'task' }
+export type GitHubPriorityItem = CollectedItem & {
+  source: 'github'
+  type: 'pr_created' | 'pr_reviewed' | 'pr_assigned'
+}
+export type PriorityItem = LinearPriorityItem | GitHubPriorityItem
+
 export interface PriorityResult {
-  linear: CollectedItem[]
-  staleCreated: CollectedItem[]
-  pendingReview: CollectedItem[]
+  linear: LinearPriorityItem[]
+  staleCreated: GitHubPriorityItem[]
+  pendingReview: GitHubPriorityItem[]
 }
 
 async function resolveOptional<T>(load: () => Promise<T> | T): Promise<T | null> {
@@ -27,7 +34,7 @@ export class PriorityEngine {
     return { linear, staleCreated, pendingReview }
   }
 
-  private async fetchLinearTasks(config: Config, statuses: string[]): Promise<CollectedItem[]> {
+  private async fetchLinearTasks(config: Config, statuses: string[]): Promise<LinearPriorityItem[]> {
     const client = new LinearClient({ apiKey: config.linear.apiKey })
     const me = await client.viewer
     const issues = await client.issues({
@@ -59,7 +66,7 @@ export class PriorityEngine {
       }))
   }
 
-  private async fetchStaleCreated(config: Config, opts: { minAgeDays: number; updatedAfterDays: number }): Promise<CollectedItem[]> {
+  private async fetchStaleCreated(config: Config, opts: { minAgeDays: number; updatedAfterDays: number }): Promise<GitHubPriorityItem[]> {
     const octokit = new Octokit({ auth: config.github.token })
     const now = Date.now()
     const minAge = now - opts.minAgeDays * 86400000
@@ -79,7 +86,7 @@ export class PriorityEngine {
       }))
   }
 
-  private async fetchPendingReview(config: Config, opts: { minAgeDays: number; updatedAfterDays: number }): Promise<CollectedItem[]> {
+  private async fetchPendingReview(config: Config, opts: { minAgeDays: number; updatedAfterDays: number }): Promise<GitHubPriorityItem[]> {
     const octokit = new Octokit({ auth: config.github.token })
     const now = Date.now()
     const minAge = now - opts.minAgeDays * 86400000
