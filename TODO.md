@@ -2,10 +2,7 @@
 
 ## v1 Gaps
 
-### Slack Pagination
-- [ ] Paginate `conversations.history` (currently only first 100 messages per channel)
-- [ ] Increase channel limit beyond 10
-- [ ] Handle pagination for `users.conversations`
+### Slack Enhancements
 - [ ] Add saved items support (threads user participated in)
 
 ### Global Install

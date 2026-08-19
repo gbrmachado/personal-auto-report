@@ -198,8 +198,6 @@ npm run build      # tsup --platform node
 
 ## Known Limitations (v1)
 
-- **Slack pagination** — only fetches first page of messages and first 10
-  channels. Slack data may be incomplete for heavy-channel workspaces.
 - **GitHub reviews** — review timestamps come from the Reviews API, which
   covers submitted reviews. Inline review comments without an approval/
   changes-requested state may not be picked up.
