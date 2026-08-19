@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --clean --platform node",
     "dev": "tsup src/index.ts --format esm --watch --platform node",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.type-tests.json",
     "test": "vitest run",
     "test:watch": "vitest"
   },

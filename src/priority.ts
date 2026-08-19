@@ -4,10 +4,25 @@ import type { Config } from './config.js'
 import { getPrioritiesConfig } from './config.js'
 import type { CollectedItem } from './types.js'
 
+export type LinearPriorityItem = CollectedItem & { source: 'linear'; type: 'task' }
+export type GitHubPriorityItem = CollectedItem & {
+  source: 'github'
+  type: 'pr_created' | 'pr_reviewed' | 'pr_assigned'
+}
+export type PriorityItem = LinearPriorityItem | GitHubPriorityItem
+
 export interface PriorityResult {
-  linear: CollectedItem[]
-  staleCreated: CollectedItem[]
-  pendingReview: CollectedItem[]
+  linear: LinearPriorityItem[]
+  staleCreated: GitHubPriorityItem[]
+  pendingReview: GitHubPriorityItem[]
+}
+
+async function resolveOptional<T>(load: () => Promise<T> | T): Promise<T | null> {
+  try {
+    return (await load()) ?? null
+  } catch {
+    return null
+  }
 }
 
 export class PriorityEngine {
@@ -19,7 +34,7 @@ export class PriorityEngine {
     return { linear, staleCreated, pendingReview }
   }
 
-  private async fetchLinearTasks(config: Config, statuses: string[]): Promise<CollectedItem[]> {
+  private async fetchLinearTasks(config: Config, statuses: string[]): Promise<LinearPriorityItem[]> {
     const client = new LinearClient({ apiKey: config.linear.apiKey })
     const me = await client.viewer
     const issues = await client.issues({
@@ -27,8 +42,12 @@ export class PriorityEngine {
       first: 50
     })
     const resolved = await Promise.all(issues.nodes.map(async i => {
-      const state = await i.state
-      return { ...i, state }
+      const [state, project, cycle] = await Promise.all([
+        resolveOptional(() => i.state),
+        resolveOptional(() => i.project),
+        resolveOptional(() => i.cycle)
+      ])
+      return { ...i, state, project, cycle }
     }))
     return resolved
       .filter(i => i.state && statuses.includes(i.state.name))
@@ -36,11 +55,18 @@ export class PriorityEngine {
       .map(i => ({
         id: `linear-${i.id}`, source: 'linear' as const, type: 'task' as const,
         title: i.title, url: i.url, status: i.state?.name ?? null,
-        timestamp: new Date(i.updatedAt), description: null, metadata: null
+        timestamp: new Date(i.updatedAt), description: null,
+        metadata: {
+          identifier: i.identifier,
+          priority: i.priority,
+          dueDate: i.dueDate ?? null,
+          project: i.project?.name ?? null,
+          cycle: i.cycle?.name ?? (typeof i.cycle?.number === 'number' ? `Cycle ${i.cycle.number}` : null)
+        }
       }))
   }
 
-  private async fetchStaleCreated(config: Config, opts: { minAgeDays: number; updatedAfterDays: number }): Promise<CollectedItem[]> {
+  private async fetchStaleCreated(config: Config, opts: { minAgeDays: number; updatedAfterDays: number }): Promise<GitHubPriorityItem[]> {
     const octokit = new Octokit({ auth: config.github.token })
     const now = Date.now()
     const minAge = now - opts.minAgeDays * 86400000
@@ -55,11 +81,12 @@ export class PriorityEngine {
       .map((pr: any) => ({
         id: `gh-stale-${pr.id}`, source: 'github' as const, type: 'pr_created' as const,
         title: pr.title, url: pr.html_url, status: pr.state,
-        timestamp: new Date(pr.created_at), description: null, metadata: null
+        timestamp: new Date(pr.created_at), description: null,
+        metadata: { updatedAt: pr.updated_at }
       }))
   }
 
-  private async fetchPendingReview(config: Config, opts: { minAgeDays: number; updatedAfterDays: number }): Promise<CollectedItem[]> {
+  private async fetchPendingReview(config: Config, opts: { minAgeDays: number; updatedAfterDays: number }): Promise<GitHubPriorityItem[]> {
     const octokit = new Octokit({ auth: config.github.token })
     const now = Date.now()
     const minAge = now - opts.minAgeDays * 86400000
@@ -75,7 +102,7 @@ export class PriorityEngine {
         id: `gh-review-${pr.id}`, source: 'github' as const, type: 'pr_reviewed' as const,
         title: pr.title, url: pr.html_url, status: pr.state,
         timestamp: new Date(pr.created_at), description: null,
-        metadata: { author: pr.user?.login ?? null }
+        metadata: { author: pr.user?.login ?? null, updatedAt: pr.updated_at }
       }))
   }
 }
