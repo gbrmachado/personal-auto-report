@@ -110,7 +110,7 @@ describe('SlackCollector', () => {
     expect(mockUsersConversations).toHaveBeenCalledTimes(2)
   })
 
-  it('rejects a repeated conversations.history cursor', async () => {
+  it('skips a channel whose conversations.history pagination detects a repeated cursor, keeping messages already collected', async () => {
     mockConversationsHistory
       .mockResolvedValueOnce({
         messages: [{ ts: '1722000000.000001', text: 'first <@U123>', user: 'U456' }],
@@ -120,27 +120,28 @@ describe('SlackCollector', () => {
         messages: [{ ts: '1722000000.000002', text: 'second <@U123>', user: 'U789' }],
         response_metadata: { next_cursor: 'repeated-cursor' }
       })
-      .mockResolvedValueOnce({
-        messages: [],
-        response_metadata: { next_cursor: '' }
-      })
 
-    await expect(new SlackCollector().collect(range, config)).rejects.toThrow(
-      'Slack conversations.history returned a repeated pagination cursor'
-    )
+    const items = await new SlackCollector().collect(range, config)
+
+    expect(items.map(item => item.title)).toEqual(['first <@U123>'])
     expect(mockConversationsHistory).toHaveBeenCalledTimes(2)
   })
 
-  it('surfaces conversations.history failures instead of returning partial data', async () => {
-    mockConversationsHistory
-      .mockResolvedValueOnce({
-        messages: [{ ts: '1722000000.000001', text: 'first <@U123>', user: 'U456' }],
-        response_metadata: { next_cursor: 'messages-page-2' }
+  it('isolates a conversations.history failure to its channel instead of discarding other channels', async () => {
+    mockUsersConversations.mockResolvedValueOnce({
+      channels: [{ id: 'C-OK' }, { id: 'C-FAILS' }],
+      response_metadata: { next_cursor: '' }
+    })
+    mockConversationsHistory.mockImplementation(({ channel }) => {
+      if (channel === 'C-FAILS') return Promise.reject(new Error('history unavailable'))
+      return Promise.resolve({
+        messages: [{ ts: '1722000000.000001', text: `<@U123> mention in ${channel}`, user: 'U456' }],
+        response_metadata: { next_cursor: '' }
       })
-      .mockRejectedValueOnce(new Error('history unavailable'))
+    })
 
-    await expect(new SlackCollector().collect(range, config)).rejects.toThrow(
-      'history unavailable'
-    )
+    const items = await new SlackCollector().collect(range, config)
+
+    expect(items.map(item => item.metadata?.channel)).toEqual(['C-OK'])
   })
 })

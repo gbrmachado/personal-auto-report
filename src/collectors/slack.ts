@@ -46,40 +46,44 @@ export class SlackCollector implements Collector {
     } while (channelCursor)
 
     for (const channelId of channelIds) {
-      const seenMessageCursors = new Set<string>()
-      let messageCursor: string | undefined
-      do {
-        const history = await client.conversations.history({
-          channel: channelId,
-          oldest: String(range.start.getTime() / 1000),
-          latest: String(range.end.getTime() / 1000),
-          limit: 200,
-          ...(messageCursor ? { cursor: messageCursor } : {})
-        })
+      try {
+        const seenMessageCursors = new Set<string>()
+        let messageCursor: string | undefined
+        do {
+          const history = await client.conversations.history({
+            channel: channelId,
+            oldest: String(range.start.getTime() / 1000),
+            latest: String(range.end.getTime() / 1000),
+            limit: 200,
+            ...(messageCursor ? { cursor: messageCursor } : {})
+          })
 
-        messageCursor = paginationCursor(
-          history.response_metadata?.next_cursor,
-          seenMessageCursors,
-          'conversations.history'
-        )
+          messageCursor = paginationCursor(
+            history.response_metadata?.next_cursor,
+            seenMessageCursors,
+            'conversations.history'
+          )
 
-        for (const msg of history.messages ?? []) {
-          const mentions = (msg.text ?? '').match(/<@(\w+)>/g) ?? []
-          if (mentions.some(m => m.includes(userId))) {
-            items.push({
-              id: `slack-${channelId}-${msg.ts}`,
-              source: 'slack',
-              type: 'slack_message',
-              title: (msg.text ?? '').slice(0, 200),
-              url: null,
-              status: null,
-              timestamp: new Date(Number(msg.ts) * 1000),
-              description: msg.text ?? null,
-              metadata: { channel: channelId, user: msg.user ?? null }
-            })
+          for (const msg of history.messages ?? []) {
+            const mentions = (msg.text ?? '').match(/<@(\w+)>/g) ?? []
+            if (mentions.some(m => m.includes(userId))) {
+              items.push({
+                id: `slack-${channelId}-${msg.ts}`,
+                source: 'slack',
+                type: 'slack_message',
+                title: (msg.text ?? '').slice(0, 200),
+                url: null,
+                status: null,
+                timestamp: new Date(Number(msg.ts) * 1000),
+                description: msg.text ?? null,
+                metadata: { channel: channelId, user: msg.user ?? null }
+              })
+            }
           }
-        }
-      } while (messageCursor)
+        } while (messageCursor)
+      } catch {
+        continue
+      }
     }
 
     return items
