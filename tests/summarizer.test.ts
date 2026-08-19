@@ -89,4 +89,26 @@ describe('summarizer', () => {
     const prompt = buildPrompt(items, 'daily', 'Custom: {period} — {sections}')
     expect(prompt).toBe('Custom: daily — [linear/task] Deploy fix (Done)')
   })
+
+  it('throws when the model returns empty content (truncated response)', async () => {
+    mockCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: '' } }]
+    })
+    const items: CollectedItem[] = [
+      { id: '1', source: 'linear', type: 'task', title: 'Fix login bug', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }
+    ]
+    const config = { ai: { apiKey: 'test-key', provider: 'openai', model: 'gpt-4o-mini' } }
+    await expect(generateSummary(items, config as any, 'daily')).rejects.toThrow('empty')
+  })
+
+  it('throws when the model returns whitespace-only content', async () => {
+    mockCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: '   \n  ' } }]
+    })
+    const items: CollectedItem[] = [
+      { id: '1', source: 'linear', type: 'task', title: 'Fix login bug', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: null }
+    ]
+    const config = { ai: { apiKey: 'test-key', provider: 'openai', model: 'gpt-4o-mini' } }
+    await expect(generateSummary(items, config as any, 'daily')).rejects.toThrow('empty')
+  })
 })

@@ -13,6 +13,9 @@ export function buildPrompt(items: CollectedItem[], period: string, template?: s
 
   return `You are a professional review assistant. Summarize the following activity for a ${period} professional review.
 
+This is a personal report about the user's individual contributions, not a team report.
+Write in first person ("I worked on...", "I decided...") and focus on what the user personally accomplished.
+
 Focus on:
 - What was accomplished
 - Decisions made
@@ -40,9 +43,12 @@ export async function generateSummary(items: CollectedItem[], config: Config, pe
   const response = await openai.chat.completions.create({
     model: config.ai.model,
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.5,
-    max_tokens: 500
+    temperature: 0.5
   })
 
-  return response.choices[0]?.message?.content ?? 'Summary generation failed.'
+  const content = response.choices[0]?.message?.content
+  if (!content?.trim()) {
+    throw new Error(`AI summary returned empty content (finish_reason: ${response.choices[0]?.finish_reason ?? 'unknown'})`)
+  }
+  return content
 }
