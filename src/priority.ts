@@ -10,6 +10,14 @@ export interface PriorityResult {
   pendingReview: CollectedItem[]
 }
 
+async function resolveOptional<T>(load: () => Promise<T> | T): Promise<T | null> {
+  try {
+    return (await load()) ?? null
+  } catch {
+    return null
+  }
+}
+
 export class PriorityEngine {
   async collect(config: Config): Promise<PriorityResult> {
     const p = getPrioritiesConfig(config)
@@ -27,8 +35,12 @@ export class PriorityEngine {
       first: 50
     })
     const resolved = await Promise.all(issues.nodes.map(async i => {
-      const state = await i.state
-      return { ...i, state }
+      const [state, project, cycle] = await Promise.all([
+        i.state,
+        resolveOptional(() => i.project),
+        resolveOptional(() => i.cycle)
+      ])
+      return { ...i, state, project, cycle }
     }))
     return resolved
       .filter(i => i.state && statuses.includes(i.state.name))
@@ -36,7 +48,14 @@ export class PriorityEngine {
       .map(i => ({
         id: `linear-${i.id}`, source: 'linear' as const, type: 'task' as const,
         title: i.title, url: i.url, status: i.state?.name ?? null,
-        timestamp: new Date(i.updatedAt), description: null, metadata: null
+        timestamp: new Date(i.updatedAt), description: null,
+        metadata: {
+          identifier: i.identifier,
+          priority: i.priority,
+          dueDate: i.dueDate ?? null,
+          project: i.project?.name ?? null,
+          cycle: i.cycle?.name ?? (i.cycle?.number ? `Cycle ${i.cycle.number}` : null)
+        }
       }))
   }
 
@@ -55,7 +74,8 @@ export class PriorityEngine {
       .map((pr: any) => ({
         id: `gh-stale-${pr.id}`, source: 'github' as const, type: 'pr_created' as const,
         title: pr.title, url: pr.html_url, status: pr.state,
-        timestamp: new Date(pr.created_at), description: null, metadata: null
+        timestamp: new Date(pr.created_at), description: null,
+        metadata: { updatedAt: pr.updated_at }
       }))
   }
 
@@ -75,7 +95,7 @@ export class PriorityEngine {
         id: `gh-review-${pr.id}`, source: 'github' as const, type: 'pr_reviewed' as const,
         title: pr.title, url: pr.html_url, status: pr.state,
         timestamp: new Date(pr.created_at), description: null,
-        metadata: { author: pr.user?.login ?? null }
+        metadata: { author: pr.user?.login ?? null, updatedAt: pr.updated_at }
       }))
   }
 }

@@ -3,6 +3,7 @@ import { Command } from 'commander'
 import { initConfig } from './config.js'
 import { generateReview } from './review.js'
 import { runCli } from './cli.js'
+import { registerFocusCommand } from './focus/command.js'
 
 const program = new Command()
 program
@@ -50,6 +51,8 @@ program
     const md = await generateReview('monthly', options.ai ?? false, options.from, options.to)
     console.log(md)
   })
+
+registerFocusCommand(program)
 
 program
   .command('priorities')
