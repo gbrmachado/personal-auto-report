@@ -135,6 +135,63 @@ describe('PriorityEngine', () => {
     expect(collected.linear).toHaveLength(1)
     expect(collected.linear[0].metadata).toMatchObject({ project: null, cycle: null })
   })
+
+  it('keeps a single failed state lookup from aborting the whole Linear collection', async () => {
+    vi.mocked(LinearClient).mockImplementationOnce(() => ({
+      viewer: Promise.resolve({ id: 'user-1' }),
+      issues: vi.fn().mockResolvedValue({
+        nodes: [
+          {
+            id: 'i3', identifier: 'FIX-3', title: 'State lookup fails',
+            url: 'https://linear.app/t/FIX-3', updatedAt: '2026-08-20T10:00:00.000Z',
+            state: Promise.reject(new Error('state unavailable')), priority: 2, dueDate: null,
+            project: Promise.resolve(null), cycle: Promise.resolve(null)
+          },
+          {
+            id: 'i4', identifier: 'FIX-4', title: 'State lookup succeeds',
+            url: 'https://linear.app/t/FIX-4', updatedAt: '2026-08-20T11:00:00.000Z',
+            state: Promise.resolve({ name: 'In Progress' }), priority: 2, dueDate: null,
+            project: Promise.resolve(null), cycle: Promise.resolve(null)
+          }
+        ]
+      })
+    }) as any)
+    mockRequest.mockReset()
+    mockRequest.mockResolvedValue({ data: { items: [] } })
+
+    const collected = await new PriorityEngine().collect({
+      linear: { apiKey: 'l' }, github: { token: 't' }, slack: { token: 't' },
+      user: { linear: 'm@x.com', github: 'me', slack: 'U1' },
+      ai: { provider: 'openai', apiKey: 'a', model: 'm' }, db: { path: ':memory:' }
+    } as any)
+
+    expect(collected.linear).toHaveLength(1)
+    expect(collected.linear[0].title).toBe('State lookup succeeds')
+  })
+
+  it('labels a zero-indexed cycle instead of dropping it as falsy', async () => {
+    vi.mocked(LinearClient).mockImplementationOnce(() => ({
+      viewer: Promise.resolve({ id: 'user-1' }),
+      issues: vi.fn().mockResolvedValue({
+        nodes: [{
+          id: 'i5', identifier: 'FIX-5', title: 'Cycle zero',
+          url: 'https://linear.app/t/FIX-5', updatedAt: '2026-08-20T10:00:00.000Z',
+          state: Promise.resolve({ name: 'In Progress' }), priority: 2, dueDate: null,
+          project: Promise.resolve(null), cycle: Promise.resolve({ number: 0, name: null })
+        }]
+      })
+    }) as any)
+    mockRequest.mockReset()
+    mockRequest.mockResolvedValue({ data: { items: [] } })
+
+    const collected = await new PriorityEngine().collect({
+      linear: { apiKey: 'l' }, github: { token: 't' }, slack: { token: 't' },
+      user: { linear: 'm@x.com', github: 'me', slack: 'U1' },
+      ai: { provider: 'openai', apiKey: 'a', model: 'm' }, db: { path: ':memory:' }
+    } as any)
+
+    expect(collected.linear[0].metadata).toMatchObject({ cycle: 'Cycle 0' })
+  })
 })
 
 describe('renderPriorities', () => {

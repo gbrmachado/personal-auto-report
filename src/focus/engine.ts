@@ -125,7 +125,8 @@ function toFocusItem(
 
   const uniqueReasons = [...new Set(reasons)]
   return {
-    source: item.source === 'slack' ? 'report' : item.source,
+    // PriorityResult only ever collects linear/github items, never slack.
+    source: item.source as 'linear' | 'github',
     id: item.id,
     title: item.title,
     url: item.url,
@@ -155,6 +156,7 @@ export function buildFocusReport(
   const selectedIds = new Set(primary.map(item => item.id))
 
   const closeLinear = result.linear.filter(item => {
+    if (selectedIds.has(item.id)) return false
     const status = item.status?.toLowerCase()
     return status === 'in review' || status === 'ready to merge'
   })

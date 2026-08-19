@@ -80,8 +80,9 @@ describe('buildFocusReport', () => {
 
     const report = buildFocusReport(result, { now: NOW, timezone: 'UTC' })
 
-    expect(report.closeToday.map(i => i.id)).toEqual(['near-closure', 'stale-pr'])
-    expect(report.closeToday[1]).toMatchObject({
+    expect(report.primaryFocus.map(i => i.id)).toEqual(['near-closure'])
+    expect(report.closeToday.map(i => i.id)).toEqual(['stale-pr'])
+    expect(report.closeToday[0]).toMatchObject({
       ageDays: 3, lastEvidenceAt: '2026-08-17T12:00:00.000Z'
     })
     expect(report.reviews.map(i => i.id)).toEqual(['requested-review'])
@@ -109,5 +110,23 @@ describe('buildFocusReport', () => {
     expect(forward.closeToday.map(i => i.id)).toEqual(['pr-a', 'pr-b'])
     expect(forward.reviews.map(i => i.id)).toEqual(['review-a', 'review-b'])
     expect(forward).toEqual(reverse)
+  })
+
+  it('does not duplicate a linear item into closeToday when it is already in primaryFocus', () => {
+    const result: PriorityResult = {
+      linear: [
+        item('urgent-in-review', 'In Review', '2026-08-19T12:00:00.000Z', 1),
+        item('other-in-review', 'In Review', '2026-08-10T12:00:00.000Z', 3)
+      ],
+      staleCreated: [],
+      pendingReview: []
+    }
+
+    const report = buildFocusReport(result, {
+      now: NOW, timezone: 'UTC', maxPrimaryItems: 1
+    })
+
+    expect(report.primaryFocus.map(i => i.id)).toEqual(['urgent-in-review'])
+    expect(report.closeToday.map(i => i.id)).toEqual(['other-in-review'])
   })
 })

@@ -36,7 +36,7 @@ export class PriorityEngine {
     })
     const resolved = await Promise.all(issues.nodes.map(async i => {
       const [state, project, cycle] = await Promise.all([
-        i.state,
+        resolveOptional(() => i.state),
         resolveOptional(() => i.project),
         resolveOptional(() => i.cycle)
       ])
@@ -54,7 +54,7 @@ export class PriorityEngine {
           priority: i.priority,
           dueDate: i.dueDate ?? null,
           project: i.project?.name ?? null,
-          cycle: i.cycle?.name ?? (i.cycle?.number ? `Cycle ${i.cycle.number}` : null)
+          cycle: i.cycle?.name ?? (typeof i.cycle?.number === 'number' ? `Cycle ${i.cycle.number}` : null)
         }
       }))
   }
