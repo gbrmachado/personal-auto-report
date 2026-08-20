@@ -1,6 +1,34 @@
 import type { CollectedItem, CrossRef } from './types.js'
 import { groupByType } from './aggregator.js'
 
+function formatCycleTime(item: CollectedItem): string {
+  const startedAt = item.metadata?.startedAt
+  const completedAt = item.metadata?.completedAt
+  if (typeof startedAt !== 'string' || typeof completedAt !== 'string') return '-'
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime()
+  if (!Number.isFinite(ms) || ms < 0) return '-'
+  const days = ms / 86_400_000
+  return days < 1 ? `${Math.max(1, Math.round(ms / 3_600_000))}h` : `${Math.round(days)}d`
+}
+
+function formatStatusTimeline(items: CollectedItem[]): string[] {
+  const withHistory = items.filter(item => (item.statusHistory?.length ?? 0) >= 2)
+  if (withHistory.length === 0) return []
+
+  const lines: string[] = ['## Status Timeline', '']
+  for (const item of withHistory) {
+    const identifier = item.metadata?.identifier as string | undefined
+    lines.push(identifier ? `### ${identifier} — ${item.title}` : `### ${item.title}`)
+    for (const change of item.statusHistory ?? []) {
+      const dateLabel = change.changedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const transition = change.from ? `${change.from} → ${change.to}` : change.to
+      lines.push(`- ${dateLabel} — ${transition}`)
+    }
+    lines.push('')
+  }
+  return lines
+}
+
 export function renderReview(
   items: CollectedItem[],
   period: string,
@@ -99,18 +127,18 @@ export function renderReview(
       const sorted = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))
       for (const [groupName, groupItems] of sorted) {
         lines.push(`### ${groupName}`)
-        lines.push('| Title | Status | Related | Link |')
-        lines.push('|-------|--------|---------|------|')
+        lines.push('| Title | Status | Cycle Time | Related | Link |')
+        lines.push('|-------|--------|------------|---------|------|')
         for (const item of groupItems) {
-          lines.push(`| ${item.title} | ${item.status ?? '-'} | ${formatRelated(item)} | ${item.url ?? '-'} |`)
+          lines.push(`| ${item.title} | ${item.status ?? '-'} | ${formatCycleTime(item)} | ${formatRelated(item)} | ${item.url ?? '-'} |`)
         }
         lines.push('')
       }
     } else {
-      lines.push('| Title | Status | Related | Link |')
-      lines.push('|-------|--------|---------|------|')
+      lines.push('| Title | Status | Cycle Time | Related | Link |')
+      lines.push('|-------|--------|------------|---------|------|')
       for (const item of byType.task) {
-        lines.push(`| ${item.title} | ${item.status ?? '-'} | ${formatRelated(item)} | ${item.url ?? '-'} |`)
+        lines.push(`| ${item.title} | ${item.status ?? '-'} | ${formatCycleTime(item)} | ${formatRelated(item)} | ${item.url ?? '-'} |`)
       }
       lines.push('')
     }
@@ -162,6 +190,8 @@ export function renderReview(
     }
     lines.push('')
   }
+
+  lines.push(...formatStatusTimeline(items))
 
   if (warnings?.length) {
     lines.push('## Warnings')

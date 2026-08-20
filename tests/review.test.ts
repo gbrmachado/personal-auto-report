@@ -28,7 +28,8 @@ vi.mock('../src/config.js', () => ({
 vi.mock('../src/db.js', () => ({
   getDb: () => ({ close: mockDbClose, pragma: vi.fn(), exec: vi.fn() }),
   insertCollections: vi.fn(),
-  insertReview: vi.fn()
+  insertReview: vi.fn(),
+  insertStatusHistory: vi.fn()
 }))
 
 vi.mock('../src/aggregator.js', () => ({

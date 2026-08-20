@@ -1,7 +1,25 @@
 import { Octokit } from 'octokit'
 import type { Collector } from '../collector.js'
-import type { CollectedItem, DateRange } from '../types.js'
+import type { CollectedItem, DateRange, StatusChange } from '../types.js'
 import type { Config } from '../config.js'
+
+interface GithubSearchPr {
+  created_at: string
+  closed_at?: string | null
+  state: string
+  pull_request?: { merged_at?: string | null }
+}
+
+function buildPrStatusHistory(pr: GithubSearchPr): StatusChange[] {
+  const history: StatusChange[] = [{ from: null, to: 'opened', changedAt: new Date(pr.created_at) }]
+  const mergedAt = pr.pull_request?.merged_at
+  if (mergedAt) {
+    history.push({ from: 'opened', to: 'merged', changedAt: new Date(mergedAt) })
+  } else if (pr.closed_at) {
+    history.push({ from: 'opened', to: 'closed', changedAt: new Date(pr.closed_at) })
+  }
+  return history
+}
 
 export function repoMatches(repo: string, pattern: string): boolean {
   if (pattern.endsWith('/*')) {
@@ -53,7 +71,8 @@ export class GitHubCollector implements Collector {
         status: pr.state,
         timestamp: new Date(pr.created_at),
         description: pr.body ?? null,
-        metadata: { repo: repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null }
+        metadata: { repo: repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null },
+        statusHistory: buildPrStatusHistory(pr)
       })
     }
 
@@ -101,7 +120,8 @@ export class GitHubCollector implements Collector {
         status: reviewStatus,
         timestamp: reviewTimestamp,
         description: pr.body ?? null,
-        metadata: { repo: repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null }
+        metadata: { repo: repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null },
+        statusHistory: buildPrStatusHistory(pr)
       })
     }
 
@@ -122,7 +142,8 @@ export class GitHubCollector implements Collector {
           status: pr.state,
           timestamp: new Date(pr.updated_at),
           description: pr.body ?? null,
-          metadata: { repo: repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null }
+          metadata: { repo: repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : null },
+          statusHistory: buildPrStatusHistory(pr)
         })
       }
     }

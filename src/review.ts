@@ -2,7 +2,7 @@ import type { CollectedItem, DateRange } from './types.js'
 import type { Collector } from './collector.js'
 import type { Config } from './config.js'
 import { loadConfig, getConfigDir } from './config.js'
-import { getDb, insertCollections, insertReview } from './db.js'
+import { getDb, insertCollections, insertReview, insertStatusHistory } from './db.js'
 import { LinearCollector } from './collectors/linear.js'
 import { GitHubCollector } from './collectors/github.js'
 import { SlackCollector } from './collectors/slack.js'
@@ -110,6 +110,18 @@ export async function generateReview(period: string, useAi: boolean, fromDate?: 
     collected_date: item.timestamp.toISOString().split('T')[0]
   }))
   insertCollections(db, rows)
+
+  const statusHistoryRows = items.flatMap(item =>
+    (item.statusHistory ?? []).map((change, index) => ({
+      id: `${item.id}-${index}`,
+      item_id: item.id,
+      source: item.source,
+      from_status: change.from,
+      to_status: change.to,
+      changed_at: change.changedAt.toISOString()
+    }))
+  )
+  insertStatusHistory(db, statusHistoryRows)
 
   let aiSummary: string | undefined
   if (useAi) {

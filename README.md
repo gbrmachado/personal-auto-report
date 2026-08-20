@@ -151,7 +151,7 @@ Configure in OpenCode or any MCP client:
 _[2-4 paragraph narrative, only with --ai flag]_
 
 ## Linear Tasks
-| Title | Status | Link |
+| Title | Status | Cycle Time | Link |
 
 ## Pull Requests — Created
 | Title | Repo | Status | Link |
@@ -162,9 +162,23 @@ _[2-4 paragraph narrative, only with --ai flag]_
 ## Slack Highlights
 _[AI-summarized relevant messages]_
 
+## Status Timeline
+_[Chronological status changes for items with 2+ tracked transitions]_
+
 ## Warnings
 _[Collector failures, if any]_
 ```
+
+### Status History
+
+Linear tasks report a **Cycle Time** column (`startedAt` → `completedAt`) and,
+where a task moved through 2+ workflow states, a full transition timeline in
+the **Status Timeline** section — pulled from Linear's `issue.history()` API,
+not just the current status. GitHub PRs get a lightweight `opened → merged`
+or `opened → closed` timeline from data already returned by the search API
+(no extra requests). Fetching Linear history costs one extra API call per
+issue per collection run; a failure for any single issue degrades to no
+history for that issue rather than failing the whole collector.
 
 ## Architecture
 

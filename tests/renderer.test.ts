@@ -201,7 +201,7 @@ describe('renderer', () => {
     ]
     const result = renderReview(items, 'daily', '2026-07-30')
     expect(result).not.toContain('###')
-    expect(result).toContain('| Title | Status | Related | Link |')
+    expect(result).toContain('| Title | Status | Cycle Time | Related | Link |')
   })
 
   it('shows cross-refs in grouped view', () => {
@@ -284,6 +284,69 @@ describe('renderer', () => {
     const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
     expect(result).not.toContain('### Eng')
     expect(result).toContain('## Linear Tasks')
-    expect(result).toContain('| Title | Status | Related | Link |')
+    expect(result).toContain('| Title | Status | Cycle Time | Related | Link |')
+  })
+
+  it('renders cycle time in days when started/completed metadata is present', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      {
+        id: 'l1', source: 'linear', type: 'task', title: 'Task A', url: null, status: 'Done',
+        timestamp: new Date(), description: null,
+        metadata: { startedAt: '2026-07-20T00:00:00Z', completedAt: '2026-07-25T00:00:00Z' }
+      }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
+    expect(result).toContain('| Task A | Done | 5d | - | - |')
+  })
+
+  it('renders a dash for cycle time when started/completed metadata is missing', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task A', url: null, status: 'Todo', timestamp: new Date(), description: null, metadata: null }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
+    expect(result).toContain('| Task A | Todo | - | - | - |')
+  })
+
+  it('renders a Status Timeline section for items with 2+ history entries', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      {
+        id: 'l1', source: 'linear', type: 'task', title: 'Fix login bug', url: null, status: 'In Review',
+        timestamp: new Date(), description: null, metadata: { identifier: 'TEST-1' },
+        statusHistory: [
+          { from: 'Backlog', to: 'Todo', changedAt: new Date('2026-07-20T00:00:00Z') },
+          { from: 'Todo', to: 'In Progress', changedAt: new Date('2026-07-22T00:00:00Z') },
+          { from: 'In Progress', to: 'In Review', changedAt: new Date('2026-07-27T00:00:00Z') }
+        ]
+      },
+      {
+        id: 'gh1', source: 'github', type: 'pr_created', title: 'Add feature', url: null, status: 'closed',
+        timestamp: new Date(), description: null, metadata: { repo: 'my-repo' },
+        statusHistory: [
+          { from: null, to: 'opened', changedAt: new Date('2026-07-18T00:00:00Z') },
+          { from: 'opened', to: 'merged', changedAt: new Date('2026-07-25T00:00:00Z') }
+        ]
+      }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
+    expect(result).toContain('## Status Timeline')
+    expect(result).toContain('### TEST-1 — Fix login bug')
+    expect(result).toContain('- Jul 20 — Backlog → Todo')
+    expect(result).toContain('- Jul 22 — Todo → In Progress')
+    expect(result).toContain('- Jul 27 — In Progress → In Review')
+    expect(result).toContain('### Add feature')
+    expect(result).toContain('- Jul 18 — opened')
+    expect(result).toContain('- Jul 25 — opened → merged')
+  })
+
+  it('omits the Status Timeline section when no item has 2+ history entries', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task A', url: null, status: 'Todo', timestamp: new Date(), description: null, metadata: null, statusHistory: [] }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
+    expect(result).not.toContain('## Status Timeline')
   })
 })

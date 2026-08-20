@@ -228,6 +228,114 @@ describe('GitHubCollector', () => {
     }
   })
 
+  it('builds a merged status history when pull_request.merged_at is set', async () => {
+    const original = mockRequest.getMockImplementation()
+    try {
+      mockRequest.mockImplementation((route, { q } = {}) => {
+        if (q?.includes('author:')) {
+          return {
+            data: {
+              items: [
+                { id: 40, title: 'Merged PR', html_url: 'https://github.com/foo/bar/pull/40', state: 'closed',
+                  created_at: '2026-07-20T10:00:00Z', closed_at: '2026-07-25T10:00:00Z',
+                  pull_request: { merged_at: '2026-07-25T10:00:00Z' },
+                  body: 'desc', number: 40, repository_url: 'https://api.github.com/repos/foo/bar' }
+              ]
+            }
+          }
+        }
+        return { data: { items: [] } }
+      })
+
+      const collector = new GitHubCollector()
+      const date = '2026-07-27'
+      const items = await collector.collect(
+        { start: new Date(date), end: new Date(date) },
+        { github: { token: 'test' }, user: { github: 'testuser' } }
+      )
+
+      const created = items.find(i => i.type === 'pr_created')
+      expect(created?.statusHistory).toEqual([
+        { from: null, to: 'opened', changedAt: new Date('2026-07-20T10:00:00Z') },
+        { from: 'opened', to: 'merged', changedAt: new Date('2026-07-25T10:00:00Z') }
+      ])
+    } finally {
+      if (original) mockRequest.mockImplementation(original)
+      else mockRequest.mockReset()
+    }
+  })
+
+  it('builds a closed (not merged) status history when closed_at is set without merged_at', async () => {
+    const original = mockRequest.getMockImplementation()
+    try {
+      mockRequest.mockImplementation((route, { q } = {}) => {
+        if (q?.includes('author:')) {
+          return {
+            data: {
+              items: [
+                { id: 41, title: 'Closed PR', html_url: 'https://github.com/foo/bar/pull/41', state: 'closed',
+                  created_at: '2026-07-20T10:00:00Z', closed_at: '2026-07-22T10:00:00Z',
+                  body: 'desc', number: 41, repository_url: 'https://api.github.com/repos/foo/bar' }
+              ]
+            }
+          }
+        }
+        return { data: { items: [] } }
+      })
+
+      const collector = new GitHubCollector()
+      const date = '2026-07-27'
+      const items = await collector.collect(
+        { start: new Date(date), end: new Date(date) },
+        { github: { token: 'test' }, user: { github: 'testuser' } }
+      )
+
+      const created = items.find(i => i.type === 'pr_created')
+      expect(created?.statusHistory).toEqual([
+        { from: null, to: 'opened', changedAt: new Date('2026-07-20T10:00:00Z') },
+        { from: 'opened', to: 'closed', changedAt: new Date('2026-07-22T10:00:00Z') }
+      ])
+    } finally {
+      if (original) mockRequest.mockImplementation(original)
+      else mockRequest.mockReset()
+    }
+  })
+
+  it('builds a single-entry status history for still-open PRs', async () => {
+    const original = mockRequest.getMockImplementation()
+    try {
+      mockRequest.mockImplementation((route, { q } = {}) => {
+        if (q?.includes('author:')) {
+          return {
+            data: {
+              items: [
+                { id: 42, title: 'Open PR', html_url: 'https://github.com/foo/bar/pull/42', state: 'open',
+                  created_at: '2026-07-20T10:00:00Z',
+                  body: 'desc', number: 42, repository_url: 'https://api.github.com/repos/foo/bar' }
+              ]
+            }
+          }
+        }
+        return { data: { items: [] } }
+      })
+
+      const collector = new GitHubCollector()
+      const date = '2026-07-27'
+      const items = await collector.collect(
+        { start: new Date(date), end: new Date(date) },
+        { github: { token: 'test' }, user: { github: 'testuser' } }
+      )
+
+      const created = items.find(i => i.type === 'pr_created')
+      expect(created?.statusHistory).toEqual([
+        { from: null, to: 'opened', changedAt: new Date('2026-07-20T10:00:00Z') }
+      ])
+    } finally {
+      if (original) mockRequest.mockImplementation(original)
+      else mockRequest.mockReset()
+    }
+  })
+
   it('combined includeRepos and excludeRepos', async () => {
     const original = mockRequest.getMockImplementation()
     try {
