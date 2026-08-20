@@ -1,6 +1,6 @@
 import { LinearClient } from '@linear/sdk'
 import type { Collector } from '../collector.js'
-import type { CollectedItem, DateRange, StatusChange } from '../types.js'
+import type { CollectedItem, DateRange, StatusChange, LinkedPR } from '../types.js'
 import type { Config } from '../config.js'
 
 async function resolveOptional<T>(load: () => Promise<T> | T): Promise<T | null> {
@@ -41,6 +41,35 @@ async function fetchStatusHistory(
   return changes
 }
 
+async function fetchLinkedPRs(
+  issue: { attachments: () => Promise<{ nodes: unknown[] } | undefined> }
+): Promise<LinkedPR[]> {
+  const attachments = await resolveOptional(() => issue.attachments())
+  if (!attachments) return []
+
+  return (attachments.nodes as Array<{
+    sourceType?: string
+    title: string
+    url: string
+    metadata?: Record<string, unknown>
+  }>)
+    .filter(a => a.sourceType === 'github')
+    .map(a => {
+      const meta = a.metadata ?? {}
+      const repoLogin = typeof meta.repoLogin === 'string' ? meta.repoLogin : null
+      const repoName = typeof meta.repoName === 'string' ? meta.repoName : null
+      return {
+        title: a.title,
+        url: a.url,
+        repo: repoLogin && repoName ? `${repoLogin}/${repoName}` : null,
+        status: typeof meta.status === 'string' ? meta.status : null,
+        mergedAt: typeof meta.mergedAt === 'string' ? meta.mergedAt : null,
+        closedAt: typeof meta.closedAt === 'string' ? meta.closedAt : null,
+        linkKind: typeof meta.linkKind === 'string' ? meta.linkKind : null
+      }
+    })
+}
+
 export class LinearCollector implements Collector {
   readonly name = 'linear'
 
@@ -57,11 +86,12 @@ export class LinearCollector implements Collector {
       fetchWorkflowStateNames(client)
     ])
     return Promise.all(issues.nodes.map(async issue => {
-      const [state, team, project, statusHistory] = await Promise.all([
+      const [state, team, project, statusHistory, linkedPRs] = await Promise.all([
         issue.state,
         issue.team,
         issue.project,
-        fetchStatusHistory(issue, stateNames)
+        fetchStatusHistory(issue, stateNames),
+        fetchLinkedPRs(issue)
       ])
       return {
         id: `linear-${issue.id}`,
@@ -78,7 +108,8 @@ export class LinearCollector implements Collector {
           project: project?.name ?? null,
           identifier: issue.identifier,
           startedAt: issue.startedAt ? new Date(issue.startedAt).toISOString() : null,
-          completedAt: issue.completedAt ? new Date(issue.completedAt).toISOString() : null
+          completedAt: issue.completedAt ? new Date(issue.completedAt).toISOString() : null,
+          linkedPRs
         },
         statusHistory
       }

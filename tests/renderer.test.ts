@@ -341,6 +341,35 @@ describe('renderer', () => {
     expect(result).toContain('- Jul 25 — opened → merged')
   })
 
+  it('renders Linked Pull Requests nested under their Linear task', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      {
+        id: 'l1', source: 'linear', type: 'task', title: 'Fix checkout bug', url: null, status: 'Done',
+        timestamp: new Date(), description: null,
+        metadata: {
+          identifier: 'ENG-1',
+          linkedPRs: [
+            { title: 'fix: checkout bug', url: 'https://github.com/org/repo/pull/1', repo: 'org/repo', status: 'merged', mergedAt: null, closedAt: null, linkKind: 'closes' }
+          ]
+        }
+      }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
+    expect(result).toContain('## Linked Pull Requests')
+    expect(result).toContain('### ENG-1 — Fix checkout bug')
+    expect(result).toContain('- 🔀 [fix: checkout bug](https://github.com/org/repo/pull/1) (org/repo) — merged')
+  })
+
+  it('omits Linked Pull Requests section when no task has linked PRs', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      { id: 'l1', source: 'linear', type: 'task', title: 'Task A', url: null, status: 'Done', timestamp: new Date(), description: null, metadata: { linkedPRs: [] } }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'none')
+    expect(result).not.toContain('## Linked Pull Requests')
+  })
+
   it('omits the Status Timeline section when no item has 2+ history entries', async () => {
     const { renderReview } = await import('../src/renderer.js')
     const items: CollectedItem[] = [

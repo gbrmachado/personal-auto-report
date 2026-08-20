@@ -149,6 +149,77 @@ describe('LinearCollector', () => {
     expect(items[0].metadata?.project).toBeNull()
   })
 
+  it('maps github attachments to linkedPRs, ignoring non-github sources', async () => {
+    vi.mocked(LinearClient).mockImplementationOnce(() => ({
+      viewer: Promise.resolve({ id: 'user-1' }),
+      issues: vi.fn().mockResolvedValue({
+        nodes: [
+          {
+            id: 'issue-pr',
+            title: 'Task with linked PR',
+            url: 'https://linear.app/team/issue/TEST-6',
+            updatedAt: '2026-07-27T10:00:00.000Z',
+            description: null,
+            state: { name: 'Done' },
+            priority: 2,
+            team: { name: 'Engineering' },
+            project: Promise.resolve(null),
+            identifier: 'TEST-6',
+            attachments: vi.fn().mockResolvedValue({
+              nodes: [
+                {
+                  sourceType: 'oauthClient',
+                  title: 'Devin Session',
+                  url: 'https://app.devin.ai/session/1',
+                  metadata: {}
+                },
+                {
+                  sourceType: 'github',
+                  title: 'feat: fix thing (TEST-6)',
+                  url: 'https://github.com/org/repo/pull/42',
+                  metadata: {
+                    repoLogin: 'org',
+                    repoName: 'repo',
+                    status: 'merged',
+                    mergedAt: '2026-07-27T09:00:00.000Z',
+                    closedAt: '2026-07-27T09:00:00.000Z',
+                    linkKind: 'closes'
+                  }
+                }
+              ]
+            })
+          }
+        ]
+      })
+    }))
+    const { LinearCollector: LC } = await import('../../src/collectors/linear.js')
+    const collector = new LC()
+    const items = await collector.collect(
+      { start: new Date('2026-07-27'), end: new Date('2026-07-27') },
+      { linear: { apiKey: 'test' }, user: { linear: 'test@test.com' } }
+    )
+    expect(items[0].metadata?.linkedPRs).toEqual([
+      {
+        title: 'feat: fix thing (TEST-6)',
+        url: 'https://github.com/org/repo/pull/42',
+        repo: 'org/repo',
+        status: 'merged',
+        mergedAt: '2026-07-27T09:00:00.000Z',
+        closedAt: '2026-07-27T09:00:00.000Z',
+        linkKind: 'closes'
+      }
+    ])
+  })
+
+  it('defaults linkedPRs to an empty array when attachments() is unavailable', async () => {
+    const collector = new LinearCollector()
+    const items = await collector.collect(
+      { start: new Date('2026-07-27'), end: new Date('2026-07-27') },
+      { linear: { apiKey: 'test' }, user: { linear: 'test@test.com' } }
+    )
+    expect(items[0].metadata?.linkedPRs).toEqual([])
+  })
+
   it('handles null team metadata', async () => {
     vi.mocked(LinearClient).mockImplementationOnce(() => ({
       viewer: Promise.resolve({ id: 'user-1' }),
