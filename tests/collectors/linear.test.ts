@@ -26,6 +26,87 @@ vi.mock('@linear/sdk', () => ({ LinearClient }))
 
 import { LinearCollector } from '../../src/collectors/linear.js'
 
+describe('LinearCollector status history', () => {
+  it('maps workflow-state history entries through the state name lookup, ignoring non-state changes', async () => {
+    vi.mocked(LinearClient).mockImplementationOnce(() => ({
+      viewer: Promise.resolve({ id: 'user-1' }),
+      workflowStates: vi.fn().mockResolvedValue({
+        nodes: [
+          { id: 'state-todo', name: 'Todo' },
+          { id: 'state-progress', name: 'In Progress' },
+          { id: 'state-review', name: 'In Review' }
+        ]
+      }),
+      issues: vi.fn().mockResolvedValue({
+        nodes: [
+          {
+            id: 'issue-hist',
+            title: 'Task with history',
+            url: 'https://linear.app/team/issue/TEST-4',
+            updatedAt: '2026-07-27T10:00:00.000Z',
+            description: null,
+            state: { name: 'In Review' },
+            priority: 2,
+            team: { name: 'Engineering' },
+            project: Promise.resolve(null),
+            identifier: 'TEST-4',
+            startedAt: '2026-07-22T00:00:00.000Z',
+            completedAt: undefined,
+            history: vi.fn().mockResolvedValue({
+              nodes: [
+                { toStateId: 'state-review', fromStateId: 'state-progress', createdAt: '2026-07-26T00:00:00.000Z' },
+                { toStateId: 'state-progress', fromStateId: 'state-todo', createdAt: '2026-07-23T00:00:00.000Z' },
+                { toAssigneeId: 'user-2', fromAssigneeId: 'user-1', createdAt: '2026-07-24T00:00:00.000Z' }
+              ]
+            })
+          }
+        ]
+      })
+    }))
+    const { LinearCollector: LC } = await import('../../src/collectors/linear.js')
+    const collector = new LC()
+    const items = await collector.collect(
+      { start: new Date('2026-07-27'), end: new Date('2026-07-27') },
+      { linear: { apiKey: 'test' }, user: { linear: 'test@test.com' } }
+    )
+    expect(items[0].statusHistory).toEqual([
+      { from: 'Todo', to: 'In Progress', changedAt: new Date('2026-07-23T00:00:00.000Z') },
+      { from: 'In Progress', to: 'In Review', changedAt: new Date('2026-07-26T00:00:00.000Z') }
+    ])
+    expect(items[0].metadata?.startedAt).toBe('2026-07-22T00:00:00.000Z')
+    expect(items[0].metadata?.completedAt).toBeNull()
+  })
+
+  it('degrades to null status history when history() is unavailable', async () => {
+    vi.mocked(LinearClient).mockImplementationOnce(() => ({
+      viewer: Promise.resolve({ id: 'user-1' }),
+      issues: vi.fn().mockResolvedValue({
+        nodes: [
+          {
+            id: 'issue-nohist',
+            title: 'Task without history support',
+            url: 'https://linear.app/team/issue/TEST-5',
+            updatedAt: '2026-07-27T10:00:00.000Z',
+            description: null,
+            state: { name: 'Todo' },
+            priority: 1,
+            team: { name: 'Engineering' },
+            project: Promise.resolve(null),
+            identifier: 'TEST-5'
+          }
+        ]
+      })
+    }))
+    const { LinearCollector: LC } = await import('../../src/collectors/linear.js')
+    const collector = new LC()
+    const items = await collector.collect(
+      { start: new Date('2026-07-27'), end: new Date('2026-07-27') },
+      { linear: { apiKey: 'test' }, user: { linear: 'test@test.com' } }
+    )
+    expect(items[0].statusHistory).toBeNull()
+  })
+})
+
 describe('LinearCollector', () => {
   it('returns collected items', async () => {
     const collector = new LinearCollector()

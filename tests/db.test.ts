@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { rmSync, existsSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { getDb, insertCollections, getCollectionsInRange, insertReview, getReviewsInRange } from '../src/db.js'
+import { getDb, insertCollections, getCollectionsInRange, insertReview, getReviewsInRange, insertStatusHistory } from '../src/db.js'
 
 describe('db', () => {
   const testDir = join(tmpdir(), 'review-test-' + Date.now())
@@ -17,6 +17,7 @@ describe('db', () => {
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]
     expect(tables.map(t => t.name)).toContain('collections')
     expect(tables.map(t => t.name)).toContain('reviews')
+    expect(tables.map(t => t.name)).toContain('status_history')
     db.close()
   })
 
@@ -48,6 +49,20 @@ describe('db', () => {
     const reviews = getReviewsInRange(db, 'daily', '2026-07-27', '2026-07-27')
     expect(reviews).toHaveLength(1)
     expect(reviews[0].raw_markdown).toBe('# Test')
+    db.close()
+  })
+
+  it('inserts status history rows and dedupes on re-insert', () => {
+    const db = getDb(testDbPath)
+    const row = {
+      id: 'test-1-0', item_id: 'test-1', source: 'linear',
+      from_status: 'Todo', to_status: 'In Progress', changed_at: '2026-07-27T10:00:00Z'
+    }
+    insertStatusHistory(db, [row])
+    insertStatusHistory(db, [row])
+    const rows = db.prepare('SELECT * FROM status_history WHERE item_id = ?').all('test-1')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject(row)
     db.close()
   })
 })

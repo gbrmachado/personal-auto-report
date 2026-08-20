@@ -15,6 +15,15 @@ export interface CollectionRow {
   collected_date: string
 }
 
+export interface StatusHistoryRow {
+  id: string
+  item_id: string
+  source: string
+  from_status: string | null
+  to_status: string
+  changed_at: string
+}
+
 export interface ReviewRow {
   id: number
   period: string
@@ -52,8 +61,17 @@ export function getDb(dbPath: string): Database.Database {
       ai_summary TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS status_history (
+      id TEXT PRIMARY KEY,
+      item_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      from_status TEXT,
+      to_status TEXT NOT NULL,
+      changed_at TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_collections_date ON collections(collected_date);
     CREATE INDEX IF NOT EXISTS idx_reviews_period ON reviews(period, date_start);
+    CREATE INDEX IF NOT EXISTS idx_status_history_item ON status_history(item_id);
   `)
   return db
 }
@@ -67,6 +85,17 @@ export function insertCollections(db: Database.Database, items: CollectionRow[])
     for (const item of items) stmt.run(item)
   })
   tx(items)
+}
+
+export function insertStatusHistory(db: Database.Database, rows: StatusHistoryRow[]): void {
+  const stmt = db.prepare(`
+    INSERT OR REPLACE INTO status_history (id, item_id, source, from_status, to_status, changed_at)
+    VALUES (@id, @item_id, @source, @from_status, @to_status, @changed_at)
+  `)
+  const tx = db.transaction((rows: StatusHistoryRow[]) => {
+    for (const row of rows) stmt.run(row)
+  })
+  tx(rows)
 }
 
 export function getCollectionsInRange(db: Database.Database, start: string, end: string): CollectionRow[] {

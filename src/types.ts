@@ -1,3 +1,9 @@
+export interface StatusChange {
+  from: string | null
+  to: string
+  changedAt: Date
+}
+
 export interface CollectedItem {
   id: string
   source: 'linear' | 'github' | 'slack'
@@ -8,6 +14,7 @@ export interface CollectedItem {
   timestamp: Date
   description: string | null
   metadata: Record<string, unknown> | null
+  statusHistory?: StatusChange[] | null
 }
 
 export interface DateRange {
