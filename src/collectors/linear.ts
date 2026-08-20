@@ -41,33 +41,61 @@ async function fetchStatusHistory(
   return changes
 }
 
+const GITHUB_PR_URL_RE = /github\.com\/[^/]+\/[^/]+\/pull\/\d+/i
+
+function isGitHubPullRequestAttachment(sourceType: string | undefined, url: string): boolean {
+  if (sourceType === 'githubPR' || sourceType === 'github_pull_request') return true
+  if (sourceType !== 'github') return false
+  return GITHUB_PR_URL_RE.test(url)
+}
+
+function parseRepoFromGitHubUrl(url: string): string | null {
+  const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/\d+/i)
+  return match ? `${match[1]}/${match[2]}` : null
+}
+
+function parseRepoFromSubtitle(subtitle: string | undefined): string | null {
+  if (!subtitle) return null
+  const match = subtitle.match(/^([^/]+\/[^/]+)\s*•/)
+  return match?.[1] ?? null
+}
+
+function mapGitHubAttachmentToLinkedPR(a: {
+  title: string
+  url: string
+  subtitle?: string
+  metadata?: Record<string, unknown>
+}): LinkedPR {
+  const meta = a.metadata ?? {}
+  const repoLogin = typeof meta.repoLogin === 'string' ? meta.repoLogin : null
+  const repoName = typeof meta.repoName === 'string' ? meta.repoName : null
+  const repoFromMeta = repoLogin && repoName ? `${repoLogin}/${repoName}` : null
+  return {
+    title: a.title,
+    url: a.url,
+    repo: repoFromMeta ?? parseRepoFromGitHubUrl(a.url) ?? parseRepoFromSubtitle(a.subtitle),
+    status: typeof meta.status === 'string' ? meta.status : null,
+    mergedAt: typeof meta.mergedAt === 'string' ? meta.mergedAt : null,
+    closedAt: typeof meta.closedAt === 'string' ? meta.closedAt : null,
+    linkKind: typeof meta.linkKind === 'string' ? meta.linkKind : null
+  }
+}
+
 async function fetchLinkedPRs(
   issue: { attachments: () => Promise<{ nodes: unknown[] } | undefined> }
 ): Promise<LinkedPR[]> {
   const attachments = await resolveOptional(() => issue.attachments())
-  if (!attachments) return []
+  if (!attachments?.nodes) return []
 
   return (attachments.nodes as Array<{
     sourceType?: string
     title: string
     url: string
+    subtitle?: string
     metadata?: Record<string, unknown>
   }>)
-    .filter(a => a.sourceType === 'github')
-    .map(a => {
-      const meta = a.metadata ?? {}
-      const repoLogin = typeof meta.repoLogin === 'string' ? meta.repoLogin : null
-      const repoName = typeof meta.repoName === 'string' ? meta.repoName : null
-      return {
-        title: a.title,
-        url: a.url,
-        repo: repoLogin && repoName ? `${repoLogin}/${repoName}` : null,
-        status: typeof meta.status === 'string' ? meta.status : null,
-        mergedAt: typeof meta.mergedAt === 'string' ? meta.mergedAt : null,
-        closedAt: typeof meta.closedAt === 'string' ? meta.closedAt : null,
-        linkKind: typeof meta.linkKind === 'string' ? meta.linkKind : null
-      }
-    })
+    .filter(a => isGitHubPullRequestAttachment(a.sourceType, a.url))
+    .map(mapGitHubAttachmentToLinkedPR)
 }
 
 export class LinearCollector implements Collector {

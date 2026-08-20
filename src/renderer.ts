@@ -11,7 +11,26 @@ function formatCycleTime(item: CollectedItem): string {
   return days < 1 ? `${Math.max(1, Math.round(ms / 3_600_000))}h` : `${Math.round(days)}d`
 }
 
-function formatLinkedPRs(items: CollectedItem[]): string[] {
+function appendLinkedPRTasks(lines: string[], tasks: CollectedItem[], headingPrefix: '###' | '####'): void {
+  for (const item of tasks) {
+    const prs = item.metadata?.linkedPRs
+    if (!Array.isArray(prs) || prs.length === 0) continue
+
+    const identifier = item.metadata?.identifier as string | undefined
+    lines.push(identifier ? `${headingPrefix} ${identifier} — ${item.title}` : `${headingPrefix} ${item.title}`)
+    for (const pr of prs as LinkedPR[]) {
+      const repoLabel = pr.repo ? ` (${pr.repo})` : ''
+      const statusLabel = pr.status ? ` — ${pr.status}` : ''
+      lines.push(`- 🔀 [${pr.title}](${pr.url})${repoLabel}${statusLabel}`)
+    }
+    lines.push('')
+  }
+}
+
+function formatLinkedPRs(
+  items: CollectedItem[],
+  groupBy: 'project' | 'team' | 'none' = 'none'
+): string[] {
   const withLinkedPRs = items.filter(item => {
     const prs = item.metadata?.linkedPRs
     return Array.isArray(prs) && prs.length > 0
@@ -19,17 +38,25 @@ function formatLinkedPRs(items: CollectedItem[]): string[] {
   if (withLinkedPRs.length === 0) return []
 
   const lines: string[] = ['## Linked Pull Requests', '']
-  for (const item of withLinkedPRs) {
-    const identifier = item.metadata?.identifier as string | undefined
-    lines.push(identifier ? `### ${identifier} — ${item.title}` : `### ${item.title}`)
-    const prs = item.metadata!.linkedPRs as LinkedPR[]
-    for (const pr of prs) {
-      const repoLabel = pr.repo ? ` (${pr.repo})` : ''
-      const statusLabel = pr.status ? ` — ${pr.status}` : ''
-      lines.push(`- 🔀 [${pr.title}](${pr.url})${repoLabel}${statusLabel}`)
+
+  if (groupBy !== 'none') {
+    const groups = new Map<string, CollectedItem[]>()
+    for (const item of withLinkedPRs) {
+      const val = item.metadata?.[groupBy]
+      const key = val != null && val !== '' ? String(val) : 'Other'
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(item)
     }
-    lines.push('')
+    const sorted = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    for (const [groupName, groupItems] of sorted) {
+      lines.push(`### ${groupName}`)
+      lines.push('')
+      appendLinkedPRTasks(lines, groupItems, '####')
+    }
+  } else {
+    appendLinkedPRTasks(lines, withLinkedPRs, '###')
   }
+
   return lines
 }
 
@@ -166,7 +193,7 @@ export function renderReview(
     }
   }
 
-  lines.push(...formatLinkedPRs(byType.task ?? []))
+  lines.push(...formatLinkedPRs(byType.task ?? [], groupBy))
 
   if (byType.pr_created?.length) {
     lines.push('## Pull Requests — Created')

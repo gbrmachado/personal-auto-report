@@ -370,6 +370,38 @@ describe('renderer', () => {
     expect(result).not.toContain('## Linked Pull Requests')
   })
 
+  it('groups linked pull requests by team when groupBy is team', async () => {
+    const { renderReview } = await import('../src/renderer.js')
+    const items: CollectedItem[] = [
+      {
+        id: 'l1', source: 'linear', type: 'task', title: 'Fix A', url: null, status: 'Done',
+        timestamp: new Date(), description: null,
+        metadata: {
+          team: 'Eng', identifier: 'ENG-1',
+          linkedPRs: [
+            { title: 'fix A', url: 'https://github.com/org/repo/pull/1', repo: 'org/repo', status: 'merged', mergedAt: null, closedAt: null, linkKind: null }
+          ]
+        }
+      },
+      {
+        id: 'l2', source: 'linear', type: 'task', title: 'Design B', url: null, status: 'Done',
+        timestamp: new Date(), description: null,
+        metadata: {
+          team: 'Design', identifier: 'DSG-1',
+          linkedPRs: [
+            { title: 'design B', url: 'https://github.com/org/repo/pull/2', repo: 'org/repo', status: 'open', mergedAt: null, closedAt: null, linkKind: null }
+          ]
+        }
+      }
+    ]
+    const result = renderReview(items, 'daily', '2026-07-30', undefined, [], [], 'team')
+    expect(result).toContain('## Linked Pull Requests')
+    expect(result).toContain('### Eng')
+    expect(result).toContain('#### ENG-1 — Fix A')
+    expect(result).toContain('### Design')
+    expect(result).toContain('#### DSG-1 — Design B')
+  })
+
   it('omits the Status Timeline section when no item has 2+ history entries', async () => {
     const { renderReview } = await import('../src/renderer.js')
     const items: CollectedItem[] = [

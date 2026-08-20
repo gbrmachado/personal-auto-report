@@ -211,6 +211,111 @@ describe('LinearCollector', () => {
     ])
   })
 
+  it('ignores github issue attachments that share sourceType github', async () => {
+    vi.mocked(LinearClient).mockImplementationOnce(() => ({
+      viewer: Promise.resolve({ id: 'user-1' }),
+      issues: vi.fn().mockResolvedValue({
+        nodes: [
+          {
+            id: 'issue-gh-issue',
+            title: 'Synced GitHub issue',
+            url: 'https://linear.app/team/issue/TEST-7',
+            updatedAt: '2026-07-27T10:00:00.000Z',
+            description: null,
+            state: { name: 'Todo' },
+            priority: 2,
+            team: { name: 'Engineering' },
+            project: Promise.resolve(null),
+            identifier: 'TEST-7',
+            attachments: vi.fn().mockResolvedValue({
+              nodes: [
+                {
+                  sourceType: 'github',
+                  title: 'Upstream GitHub issue',
+                  url: 'https://github.com/org/repo/issues/99',
+                  metadata: {}
+                },
+                {
+                  sourceType: 'github',
+                  title: 'feat: real PR',
+                  url: 'https://github.com/org/repo/pull/100',
+                  metadata: {}
+                }
+              ]
+            })
+          }
+        ]
+      })
+    }))
+    const { LinearCollector: LC } = await import('../../src/collectors/linear.js')
+    const collector = new LC()
+    const items = await collector.collect(
+      { start: new Date('2026-07-27'), end: new Date('2026-07-27') },
+      { linear: { apiKey: 'test' }, user: { linear: 'test@test.com' } }
+    )
+    expect(items[0].metadata?.linkedPRs).toEqual([
+      {
+        title: 'feat: real PR',
+        url: 'https://github.com/org/repo/pull/100',
+        repo: 'org/repo',
+        status: null,
+        mergedAt: null,
+        closedAt: null,
+        linkKind: null
+      }
+    ])
+  })
+
+  it('infers repo from PR URL or subtitle when attachment metadata is empty', async () => {
+    vi.mocked(LinearClient).mockImplementationOnce(() => ({
+      viewer: Promise.resolve({ id: 'user-1' }),
+      issues: vi.fn().mockResolvedValue({
+        nodes: [
+          {
+            id: 'issue-pr-meta',
+            title: 'Task with sparse metadata',
+            url: 'https://linear.app/team/issue/TEST-8',
+            updatedAt: '2026-07-27T10:00:00.000Z',
+            description: null,
+            state: { name: 'Done' },
+            priority: 2,
+            team: { name: 'Engineering' },
+            project: Promise.resolve(null),
+            identifier: 'TEST-8',
+            attachments: vi.fn().mockResolvedValue({
+              nodes: [
+                {
+                  sourceType: 'githubPR',
+                  title: 'Fix flaky tests',
+                  url: 'https://github.com/acme/app/pull/7',
+                  subtitle: 'acme/app • PR #7',
+                  metadata: {}
+                }
+              ]
+            })
+          }
+        ]
+      })
+    }))
+    const { LinearCollector: LC } = await import('../../src/collectors/linear.js')
+    const collector = new LC()
+    const items = await collector.collect(
+      { start: new Date('2026-07-27'), end: new Date('2026-07-27') },
+      { linear: { apiKey: 'test' }, user: { linear: 'test@test.com' } }
+    )
+    expect(items[0].metadata?.linkedPRs).toEqual([
+      {
+        title: 'Fix flaky tests',
+        url: 'https://github.com/acme/app/pull/7',
+        repo: 'acme/app',
+        status: null,
+        mergedAt: null,
+        closedAt: null,
+        linkKind: null
+      }
+    ])
+  })
+
   it('defaults linkedPRs to an empty array when attachments() is unavailable', async () => {
     const collector = new LinearCollector()
     const items = await collector.collect(
