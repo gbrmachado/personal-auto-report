@@ -1,4 +1,4 @@
-import type { CollectedItem, CrossRef } from './types.js'
+import type { CollectedItem, CrossRef, LinkedPR } from './types.js'
 import { groupByType } from './aggregator.js'
 
 function formatCycleTime(item: CollectedItem): string {
@@ -9,6 +9,55 @@ function formatCycleTime(item: CollectedItem): string {
   if (!Number.isFinite(ms) || ms < 0) return '-'
   const days = ms / 86_400_000
   return days < 1 ? `${Math.max(1, Math.round(ms / 3_600_000))}h` : `${Math.round(days)}d`
+}
+
+function appendLinkedPRTasks(lines: string[], tasks: CollectedItem[], headingPrefix: '###' | '####'): void {
+  for (const item of tasks) {
+    const prs = item.metadata?.linkedPRs
+    if (!Array.isArray(prs) || prs.length === 0) continue
+
+    const identifier = item.metadata?.identifier as string | undefined
+    lines.push(identifier ? `${headingPrefix} ${identifier} — ${item.title}` : `${headingPrefix} ${item.title}`)
+    for (const pr of prs as LinkedPR[]) {
+      const repoLabel = pr.repo ? ` (${pr.repo})` : ''
+      const statusLabel = pr.status ? ` — ${pr.status}` : ''
+      lines.push(`- 🔀 [${pr.title}](${pr.url})${repoLabel}${statusLabel}`)
+    }
+    lines.push('')
+  }
+}
+
+function formatLinkedPRs(
+  items: CollectedItem[],
+  groupBy: 'project' | 'team' | 'none' = 'none'
+): string[] {
+  const withLinkedPRs = items.filter(item => {
+    const prs = item.metadata?.linkedPRs
+    return Array.isArray(prs) && prs.length > 0
+  })
+  if (withLinkedPRs.length === 0) return []
+
+  const lines: string[] = ['## Linked Pull Requests', '']
+
+  if (groupBy !== 'none') {
+    const groups = new Map<string, CollectedItem[]>()
+    for (const item of withLinkedPRs) {
+      const val = item.metadata?.[groupBy]
+      const key = val != null && val !== '' ? String(val) : 'Other'
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(item)
+    }
+    const sorted = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    for (const [groupName, groupItems] of sorted) {
+      lines.push(`### ${groupName}`)
+      lines.push('')
+      appendLinkedPRTasks(lines, groupItems, '####')
+    }
+  } else {
+    appendLinkedPRTasks(lines, withLinkedPRs, '###')
+  }
+
+  return lines
 }
 
 function formatStatusTimeline(items: CollectedItem[]): string[] {
@@ -143,6 +192,8 @@ export function renderReview(
       lines.push('')
     }
   }
+
+  lines.push(...formatLinkedPRs(byType.task ?? [], groupBy))
 
   if (byType.pr_created?.length) {
     lines.push('## Pull Requests — Created')

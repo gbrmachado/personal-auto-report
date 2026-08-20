@@ -4,6 +4,16 @@ export interface StatusChange {
   changedAt: Date
 }
 
+export interface LinkedPR {
+  title: string
+  url: string
+  repo: string | null
+  status: string | null
+  mergedAt: string | null
+  closedAt: string | null
+  linkKind: string | null
+}
+
 export interface CollectedItem {
   id: string
   source: 'linear' | 'github' | 'slack'
