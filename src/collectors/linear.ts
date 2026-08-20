@@ -44,7 +44,6 @@ async function fetchStatusHistory(
 const GITHUB_PR_URL_RE = /github\.com\/[^/]+\/[^/]+\/pull\/\d+/i
 
 function isGitHubPullRequestAttachment(sourceType: string | undefined, url: string): boolean {
-  if (sourceType === 'githubPR' || sourceType === 'github_pull_request') return true
   if (sourceType !== 'github') return false
   return GITHUB_PR_URL_RE.test(url)
 }

@@ -285,7 +285,7 @@ describe('LinearCollector', () => {
             attachments: vi.fn().mockResolvedValue({
               nodes: [
                 {
-                  sourceType: 'githubPR',
+                  sourceType: 'github',
                   title: 'Fix flaky tests',
                   url: 'https://github.com/acme/app/pull/7',
                   subtitle: 'acme/app • PR #7',
